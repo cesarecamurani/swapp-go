@@ -24,6 +24,10 @@ type UserModel struct {
 	Email    string `gorm:"uniqueIndex;not null"`
 }
 
+func (UserModel) TableName() string {
+	return "users"
+}
+
 func toUserModel(user *domain.User) *UserModel {
 	return &UserModel{
 		ID:       user.ID,
