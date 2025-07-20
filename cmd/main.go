@@ -3,23 +3,19 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"log"
-	"swapp-go/cmd/internal/adapters/handlers"
 	"swapp-go/cmd/internal/adapters/persistence"
-	"swapp-go/cmd/internal/application/service"
 	"swapp-go/cmd/internal/config"
 )
 
 func main() {
+	config.LoadEnv()
 	config.InitDB()
 	migrate()
 
 	server := gin.Default()
+	db := config.GetDB()
 
-	userRepo := persistence.NewGormUserRepository()
-	userService := service.NewUserService(userRepo)
-	userHandler := handlers.NewUserHandler(userService)
-
-	server.POST("/users/register", userHandler.RegisterUser)
+	config.SetupRoutes(server, db)
 
 	err := server.Run(":8080")
 	if err != nil {

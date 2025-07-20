@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"net/http"
 	"swapp-go/cmd/internal/application/service"
 	"swapp-go/cmd/internal/domain"
@@ -21,10 +22,22 @@ type RegisterUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 }
 
+type LoginUserRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
 type RegisterUserResponse struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
+}
+
+type LoginUserResponse struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Token    string `json:"token"`
 }
 
 func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
@@ -54,4 +67,52 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusCreated, response)
+}
+
+func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
+	id := context.Param("id")
+
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+
+	user, err := userHandler.userService.GetUserByID(userID)
+	if err != nil {
+		context.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	response := &RegisterUserResponse{
+		UserID:   user.ID.String(),
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	context.JSON(http.StatusOK, response)
+}
+
+func (userHandler *UserHandler) LoginUser(context *gin.Context) {
+	var request LoginUserRequest
+
+	if err := context.ShouldBindJSON(&request); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		return
+	}
+
+	token, user, err := userHandler.userService.Authenticate(request.Username, request.Password)
+	if err != nil {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := &LoginUserResponse{
+		UserID:   user.ID.String(),
+		Username: user.Username,
+		Email:    user.Email,
+		Token:    token,
+	}
+
+	context.JSON(http.StatusOK, response)
 }

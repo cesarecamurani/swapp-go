@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
@@ -12,11 +11,6 @@ import (
 var DB *gorm.DB
 
 func InitDB() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Europe/London",
 		os.Getenv("DB_HOST"),
@@ -32,4 +26,11 @@ func InitDB() {
 	}
 
 	DB = db
+}
+
+func GetDB() *gorm.DB {
+	if DB == nil {
+		log.Fatal("Database connection is not initialized. Call InitDB first.")
+	}
+	return DB
 }

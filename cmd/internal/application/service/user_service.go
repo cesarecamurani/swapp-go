@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"swapp-go/cmd/internal/application/ports"
 	"swapp-go/cmd/internal/domain"
 	"swapp-go/cmd/internal/utils"
@@ -16,7 +17,7 @@ func NewUserService(repo ports.UserRepository) *UserService {
 }
 
 func (userService *UserService) RegisterUser(user *domain.User) error {
-	existingEmail, _ := userService.repo.GetUserByEmail(user.Username)
+	existingEmail, _ := userService.repo.GetUserByEmail(user.Email)
 	if existingEmail != nil {
 		return errors.New("email already exists")
 	}
@@ -36,10 +37,32 @@ func (userService *UserService) RegisterUser(user *domain.User) error {
 	return userService.repo.CreateUser(user)
 }
 
-func (userService *UserService) GetUserByID(id uint) (*domain.User, error) {
+func (userService *UserService) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	return userService.repo.GetUserByID(id)
 }
 
 func (userService *UserService) GetUserByUsername(username string) (*domain.User, error) {
 	return userService.repo.GetUserByUsername(username)
+}
+
+func (userService *UserService) GetUserByEmail(email string) (*domain.User, error) {
+	return userService.repo.GetUserByEmail(email)
+}
+
+func (userService *UserService) Authenticate(username, password string) (string, *domain.User, error) {
+	user, err := userService.repo.GetUserByUsername(username)
+	if err != nil {
+		return "", nil, errors.New("invalid username")
+	}
+
+	if !utils.CheckPasswordHash(password, user.Password) {
+		return "", nil, errors.New("invalid credentials")
+	}
+
+	token, err := utils.GenerateToken(user.ID.String(), user.Username)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return token, user, nil
 }

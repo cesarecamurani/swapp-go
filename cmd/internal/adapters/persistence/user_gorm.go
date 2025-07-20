@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"swapp-go/cmd/internal/application/ports"
-	"swapp-go/cmd/internal/config"
 	"swapp-go/cmd/internal/domain"
 	"time"
 )
@@ -13,10 +12,8 @@ type GormUserRepository struct {
 	db *gorm.DB
 }
 
-func NewGormUserRepository() ports.UserRepository {
-	return &GormUserRepository{
-		db: config.DB,
-	}
+func NewGormUserRepository(db *gorm.DB) ports.UserRepository {
+	return &GormUserRepository{db: db}
 }
 
 type UserModel struct {
@@ -68,7 +65,7 @@ func (gormUser *GormUserRepository) CreateUser(user *domain.User) error {
 	return nil
 }
 
-func (gormUser *GormUserRepository) GetUserByID(id uint) (*domain.User, error) {
+func (gormUser *GormUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	var usermodel UserModel
 
 	if err := gormUser.db.First(&usermodel, id).Error; err != nil {
