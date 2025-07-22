@@ -8,16 +8,18 @@ import (
 
 func getJwtSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
+
 	if secret == "" {
 		panic("JWT_SECRET is not set in environment")
 	}
+
 	return []byte(secret)
 }
 
-func GenerateToken(email string, userId string) (string, error) {
+func GenerateToken(email string, userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": email,
-		"sub":   userId,
+		"sub":   userID,
 		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	})
 
