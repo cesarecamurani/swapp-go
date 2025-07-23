@@ -9,11 +9,11 @@ import (
 )
 
 type UserHandler struct {
-	userService *service.UserService
+	userService service.UserServiceInterface
 }
 
-func NewUserHandler(userService *service.UserService) *UserHandler {
-	return &UserHandler{userService: userService}
+func NewUserHandler(userServiceInterface service.UserServiceInterface) *UserHandler {
+	return &UserHandler{userServiceInterface}
 }
 
 type RegisterUserRequest struct {
@@ -44,7 +44,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	var request RegisterUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
@@ -56,7 +56,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 
 	err := userHandler.userService.RegisterUser(user)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
@@ -74,13 +74,13 @@ func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
 
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID", "details": err.Error()})
 		return
 	}
 
 	user, err := userHandler.userService.GetUserByID(userID)
 	if err != nil {
-		context.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		context.JSON(http.StatusNotFound, gin.H{"error": "User not found", "details": err.Error()})
 		return
 	}
 
@@ -97,13 +97,13 @@ func (userHandler *UserHandler) LoginUser(context *gin.Context) {
 	var request LoginUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
 	token, user, err := userHandler.userService.Authenticate(request.Username, request.Password)
 	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "details": err.Error()})
 		return
 	}
 

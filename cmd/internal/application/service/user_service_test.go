@@ -19,13 +19,12 @@ type MockUserRepository struct {
 }
 
 func (m *MockUserRepository) CreateUser(user *domain.User) error {
-	args := m.Called(user)
-
-	return args.Error(0)
+	return m.Called(user).Error(0)
 }
 
 func (m *MockUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	args := m.Called(id)
+
 	if user, ok := args.Get(0).(*domain.User); ok {
 		return user, args.Error(1)
 	}
@@ -35,6 +34,7 @@ func (m *MockUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 
 func (m *MockUserRepository) GetUserByUsername(username string) (*domain.User, error) {
 	args := m.Called(username)
+
 	if user, ok := args.Get(0).(*domain.User); ok {
 		return user, args.Error(1)
 	}
@@ -44,6 +44,7 @@ func (m *MockUserRepository) GetUserByUsername(username string) (*domain.User, e
 
 func (m *MockUserRepository) GetUserByEmail(email string) (*domain.User, error) {
 	args := m.Called(email)
+
 	if user, ok := args.Get(0).(*domain.User); ok {
 		return user, args.Error(1)
 	}

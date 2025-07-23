@@ -12,12 +12,12 @@ func main() {
 	config.InitDB()
 	migrate()
 
-	server := gin.Default()
+	router := gin.Default()
 	db := config.GetDB()
 
-	config.SetupRoutes(server, db)
+	config.SetupRoutes(router, db)
 
-	err := server.Run(":8080")
+	err := router.Run(":8080")
 	if err != nil {
 		log.Fatal(err)
 		return
