@@ -16,6 +16,8 @@ import (
 	"testing"
 )
 
+type mapStrStr map[string]string
+
 type MockUserService struct {
 	mock.Mock
 }
@@ -26,14 +28,17 @@ type ErrorResponse struct {
 }
 
 var _ service.UserServiceInterface = (*MockUserService)(nil)
-var username = "test_user"
-var email = "test@example.com"
-var password = "password123"
-var domainUser = domain.User{
-	Username: username,
-	Email:    email,
-	Password: password,
-}
+var (
+	username   = "test_user"
+	email      = "test@example.com"
+	password   = "password123"
+	testToken  = "test-token"
+	domainUser = domain.User{
+		Username: username,
+		Email:    email,
+		Password: password,
+	}
+)
 
 const (
 	invalidRequestErr   = "Invalid request"
@@ -41,6 +46,7 @@ const (
 	expectedEmailErr    = "email already exists"
 )
 
+// MOCKS
 func (m *MockUserService) RegisterUser(user *domain.User) error {
 	return m.Called(user).Error(0)
 }
@@ -83,11 +89,13 @@ func (m *MockUserService) Authenticate(username, password string) (string, *doma
 	return token, user, args.Error(2)
 }
 
+// HELPERS FUNCTIONS
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.Default()
 	router.POST("/users/register", handler.RegisterUser)
+	router.POST("/users/login", handler.LoginUser)
 
 	return router
 }
@@ -105,13 +113,23 @@ func setupTest(t *testing.T) (*MockUserService, *gin.Engine) {
 func performPostRequest(t *testing.T, router *gin.Engine, url string, body interface{}) *httptest.ResponseRecorder {
 	t.Helper()
 
-	jsonBody, err := json.Marshal(body)
-	assert.NoError(t, err)
+	var jsonBody []byte
+	var err error
+
+	switch v := body.(type) {
+	case string:
+		jsonBody = []byte(v)
+	case []byte:
+		jsonBody = v
+	default:
+		jsonBody, err = json.Marshal(v)
+		assert.NoError(t, err)
+	}
 
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
 
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("content-type", "application/json")
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
@@ -129,6 +147,25 @@ func parseErrorResponse(t *testing.T, response *httptest.ResponseRecorder) *Erro
 	return &errResponse
 }
 
+func loginPayload(username, password string) mapStrStr {
+	return mapStrStr{
+		"username": username,
+		"password": password,
+	}
+}
+
+func parseLoginResponse(t *testing.T, response *httptest.ResponseRecorder) *handlers.LoginUserResponse {
+	t.Helper()
+
+	var loginResponse handlers.LoginUserResponse
+	err := json.Unmarshal(response.Body.Bytes(), &loginResponse)
+	assert.NoError(t, err)
+
+	return &loginResponse
+}
+
+// TESTS
+// RegisterUser
 func TestRegisterUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
 
@@ -195,4 +232,60 @@ func TestRegisterUser_InvalidJSON(t *testing.T) {
 	parsedResponse := parseErrorResponse(t, response)
 	assert.Equal(t, invalidRequestErr, parsedResponse.Error)
 	assert.Contains(t, parsedResponse.Details, "invalid character")
+}
+
+// LoginUser
+func TestLoginUser_Success(t *testing.T) {
+	mockService, router := setupTest(t)
+
+	userID := uuid.New()
+	testUser := &domain.User{
+		ID:       userID,
+		Username: username,
+		Email:    email,
+		Password: password,
+	}
+
+	mockService.
+		On("Authenticate", username, password).
+		Return(testToken, testUser, nil)
+
+	response := performPostRequest(t, router, "/users/login", loginPayload(username, password))
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	loginResponse := parseLoginResponse(t, response)
+	assert.Equal(t, testUser.ID.String(), loginResponse.UserID)
+	assert.Equal(t, testUser.Username, loginResponse.Username)
+	assert.Equal(t, testUser.Email, loginResponse.Email)
+	assert.Equal(t, testToken, loginResponse.Token)
+
+	mockService.AssertExpectations(t)
+}
+
+func TestLoginUser_InvalidCredentials(t *testing.T) {
+	mockService, router := setupTest(t)
+
+	mockService.
+		On("Authenticate", username, password).
+		Return("", nil, errors.New("invalid credentials"))
+
+	resp := performPostRequest(t, router, "/users/login", loginPayload(username, password))
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
+
+	errResponse := parseErrorResponse(t, resp)
+	assert.Equal(t, errResponse.Error, "Unauthorized")
+	assert.Equal(t, errResponse.Details, "invalid credentials")
+
+	mockService.AssertExpectations(t)
+}
+
+func TestLoginUser_InvalidJSON(t *testing.T) {
+	_, router := setupTest(t)
+
+	response := performPostRequest(t, router, "/users/login", "{not-json")
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+
+	errResp := parseErrorResponse(t, response)
+	assert.Equal(t, errResp.Error, "Invalid request")
+	assert.Contains(t, errResp.Details, "invalid character")
 }
