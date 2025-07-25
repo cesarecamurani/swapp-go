@@ -7,4 +7,3 @@ vendor/
 .DS_Store
 .idea/
 .vscode/
-http_requests/
