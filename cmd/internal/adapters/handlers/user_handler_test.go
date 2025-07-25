@@ -46,7 +46,7 @@ const (
 	expectedEmailErr    = "email already exists"
 )
 
-// MOCKS
+// Mocks
 func (m *MockUserService) RegisterUser(user *domain.User) error {
 	return m.Called(user).Error(0)
 }
@@ -89,7 +89,7 @@ func (m *MockUserService) Authenticate(username, password string) (string, *doma
 	return token, user, args.Error(2)
 }
 
-// HELPERS FUNCTIONS
+// Helper Functions
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
@@ -164,7 +164,7 @@ func parseLoginResponse(t *testing.T, response *httptest.ResponseRecorder) *hand
 	return &loginResponse
 }
 
-// TESTS
+// Tests
 // RegisterUser
 func TestRegisterUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)

@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"os"
 	"swapp-go/cmd/internal/adapters/handlers"
 	"swapp-go/cmd/internal/adapters/middleware"
 	"swapp-go/cmd/internal/adapters/persistence"
@@ -19,7 +20,7 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 
 	// Protected routes
 	protected := server.Group("/")
-	protected.Use(middleware.JwtAuthMiddleware)
+	protected.Use(middleware.JwtAuthMiddleware(os.Getenv("JWT_SECRET")))
 	{
 		protected.GET("/users/:id", userHandler.GetUserByID)
 	}
