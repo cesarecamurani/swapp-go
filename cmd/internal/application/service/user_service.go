@@ -37,6 +37,20 @@ func (userService *UserService) RegisterUser(user *domain.User) error {
 	return userService.repo.CreateUser(user)
 }
 
+func (userService *UserService) UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
+	_, err := userService.repo.GetUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	updatedUser, err := userService.repo.UpdateUser(id, fields)
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedUser, nil
+}
+
 func (userService *UserService) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	return userService.repo.GetUserByID(id)
 }
@@ -59,7 +73,7 @@ func (userService *UserService) Authenticate(username, password string) (string,
 		return "", nil, errors.New("invalid credentials")
 	}
 
-	token, err := utils.GenerateToken(user.ID.String(), user.Username)
+	token, err := utils.GenerateToken(user.Email, user.ID.String())
 	if err != nil {
 		return "", nil, err
 	}

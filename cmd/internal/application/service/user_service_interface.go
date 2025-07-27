@@ -7,6 +7,7 @@ import (
 
 type UserServiceInterface interface {
 	RegisterUser(user *domain.User) error
+	UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error)
 	GetUserByID(id uuid.UUID) (*domain.User, error)
 	GetUserByEmail(email string) (*domain.User, error)
 	GetUserByUsername(username string) (*domain.User, error)

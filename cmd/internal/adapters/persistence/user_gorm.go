@@ -65,6 +65,19 @@ func (gormUser *GormUserRepository) CreateUser(user *domain.User) error {
 	return nil
 }
 
+func (gormUser *GormUserRepository) UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
+	if err := gormUser.db.Model(&UserModel{}).Where("id = ?", id).Updates(fields).Error; err != nil {
+		return nil, err
+	}
+
+	var updatedModel UserModel
+	if err := gormUser.db.Where("id = ?", id).First(&updatedModel).Error; err != nil {
+		return nil, err
+	}
+
+	return toDomainUser(&updatedModel), nil
+}
+
 func (gormUser *GormUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	var usermodel UserModel
 

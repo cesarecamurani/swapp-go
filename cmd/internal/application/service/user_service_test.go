@@ -22,6 +22,16 @@ func (m *MockUserRepository) CreateUser(user *domain.User) error {
 	return m.Called(user).Error(0)
 }
 
+func (m *MockUserRepository) UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
+	args := m.Called(id, fields)
+
+	if user, ok := args.Get(0).(*domain.User); ok {
+		return user, args.Error(1)
+	}
+
+	return nil, args.Error(1)
+}
+
 func (m *MockUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	args := m.Called(id)
 
@@ -111,6 +121,62 @@ func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
 
 	assert.EqualError(t, err, "username not available")
 	mockRepo.AssertCalled(t, "GetUserByUsername", user.Username)
+}
+
+func TestUpdateUser_Success(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	userService := service.NewUserService(mockRepo)
+
+	userID := uuid.New()
+	existingUser := &domain.User{
+		ID:       userID,
+		Username: "old_user",
+		Email:    "olduser@email.com",
+	}
+	updatedFields := map[string]interface{}{
+		"username": "new_user",
+		"email":    "newuser@email.com",
+	}
+	updatedUser := &domain.User{
+		ID:       userID,
+		Username: "new_user",
+		Email:    "newuser@email.com",
+	}
+
+	mockRepo.On("GetUserByID", userID).Return(existingUser, nil)
+	mockRepo.On("UpdateUser", userID, updatedFields).Return(updatedUser, nil)
+
+	user, err := userService.UpdateUser(userID, updatedFields)
+	assert.NoError(t, err)
+	assert.Equal(t, updatedUser.Username, user.Username)
+	assert.Equal(t, updatedUser.Email, user.Email)
+
+	mockRepo.AssertExpectations(t)
+}
+
+func TestUpdateUser_UpdateFails(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	userService := service.NewUserService(mockRepo)
+
+	id := uuid.New()
+	fields := map[string]interface{}{
+		"username": "wrong_user",
+	}
+
+	mockRepo.
+		On("GetUserByID", id).
+		Return(&domain.User{ID: id}, nil)
+
+	mockRepo.
+		On("UpdateUser", id, fields).
+		Return(nil, errors.New("update error"))
+
+	user, err := userService.UpdateUser(id, fields)
+
+	assert.Error(t, err)
+	assert.Nil(t, user)
+
+	mockRepo.AssertExpectations(t)
 }
 
 func TestGetUserByID(t *testing.T) {

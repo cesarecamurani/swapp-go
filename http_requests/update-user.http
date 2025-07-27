@@ -1,8 +1,8 @@
-POST localhost:8080/users/register
+PATCH localhost:8080/users/update
 Content-Type: application/json
+Authorization: Bearer
 
 {
   "username": "",
-  "password": "",
   "email": ""
 }

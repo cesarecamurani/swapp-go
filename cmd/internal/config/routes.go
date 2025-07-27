@@ -23,5 +23,6 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 	protected.Use(middleware.JwtAuthMiddleware(os.Getenv("JWT_SECRET")))
 	{
 		protected.GET("/users/:id", userHandler.GetUserByID)
+		protected.PATCH("/users/update", userHandler.UpdateUser)
 	}
 }

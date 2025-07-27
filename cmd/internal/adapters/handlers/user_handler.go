@@ -27,10 +27,20 @@ type LoginUserRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type RegisterUserResponse struct {
+type UpdateUserRequest struct {
+	Username *string `json:"username,omitempty"`
+	Email    *string `json:"email,omitempty"`
+}
+
+type UserResponse struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
+}
+
+type UserSuccessResponse struct {
+	Message string        `json:"message"`
+	User    *UserResponse `json:"user"`
 }
 
 type LoginUserResponse struct {
@@ -44,7 +54,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	var request RegisterUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
+		badRequestResponse(context, "Invalid request", err)
 		return
 	}
 
@@ -54,19 +64,48 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 		Email:    request.Email,
 	}
 
-	err := userHandler.userService.RegisterUser(user)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
+	if err := userHandler.userService.RegisterUser(user); err != nil {
+		badRequestResponse(context, "Invalid request", err)
 		return
 	}
 
-	response := &RegisterUserResponse{
-		UserID:   user.ID.String(),
-		Username: user.Username,
-		Email:    user.Email,
+	respondWithUser(context, http.StatusCreated, "User created successfully!", user)
+}
+
+func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
+	userID := context.GetString("userID")
+
+	var request UpdateUserRequest
+	if err := context.ShouldBindJSON(&request); err != nil {
+		badRequestResponse(context, "Invalid request", err)
+		return
 	}
 
-	context.JSON(http.StatusCreated, response)
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		badRequestResponse(context, "Invalid user ID", err)
+		return
+	}
+
+	updateData := make(map[string]interface{})
+	if request.Username != nil {
+		updateData["username"] = *request.Username
+	}
+	if request.Email != nil {
+		updateData["email"] = *request.Email
+	}
+	if len(updateData) == 0 {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "No valid fields provided for update"})
+		return
+	}
+
+	updatedUser, err := userHandler.userService.UpdateUser(parsedID, updateData)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	respondWithUser(context, http.StatusOK, "User updated successfully!", updatedUser)
 }
 
 func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
@@ -84,7 +123,7 @@ func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
 		return
 	}
 
-	response := &RegisterUserResponse{
+	response := &UserResponse{
 		UserID:   user.ID.String(),
 		Username: user.Username,
 		Email:    user.Email,
@@ -115,4 +154,23 @@ func (userHandler *UserHandler) LoginUser(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, response)
+}
+
+func respondWithUser(context *gin.Context, status int, message string, user *domain.User) {
+	response := UserSuccessResponse{
+		Message: message,
+		User: &UserResponse{
+			UserID:   user.ID.String(),
+			Username: user.Username,
+			Email:    user.Email,
+		},
+	}
+	context.JSON(status, response)
+}
+
+func badRequestResponse(context *gin.Context, message string, err error) {
+	context.JSON(http.StatusBadRequest, gin.H{
+		"error":   message,
+		"details": err.Error(),
+	})
 }
