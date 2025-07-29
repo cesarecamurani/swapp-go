@@ -24,5 +24,6 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 	{
 		protected.GET("/users/:id", userHandler.GetUserByID)
 		protected.PATCH("/users/update", userHandler.UpdateUser)
+		protected.DELETE("/users/delete", userHandler.DeleteUser)
 	}
 }

@@ -14,6 +14,7 @@ var username = "test_user"
 var email = "test@example.com"
 var password = "password123"
 
+// Mocks
 type MockUserRepository struct {
 	mock.Mock
 }
@@ -30,6 +31,10 @@ func (m *MockUserRepository) UpdateUser(id uuid.UUID, fields map[string]interfac
 	}
 
 	return nil, args.Error(1)
+}
+
+func (m *MockUserRepository) DeleteUser(id uuid.UUID) error {
+	return m.Called(id).Error(0)
 }
 
 func (m *MockUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
@@ -62,6 +67,7 @@ func (m *MockUserRepository) GetUserByEmail(email string) (*domain.User, error) 
 	return nil, args.Error(1)
 }
 
+// Helper Functions
 func setupTest() (*MockUserRepository, *service.UserService) {
 	mockRepo := new(MockUserRepository)
 	userService := service.NewUserService(mockRepo)
@@ -69,6 +75,8 @@ func setupTest() (*MockUserRepository, *service.UserService) {
 	return mockRepo, userService
 }
 
+// Tests
+// RegisterUser
 func TestRegisterUser_Success(t *testing.T) {
 	mockRepo, userService := setupTest()
 
@@ -123,6 +131,7 @@ func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
 	mockRepo.AssertCalled(t, "GetUserByUsername", user.Username)
 }
 
+// UpdateUser
 func TestUpdateUser_Success(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	userService := service.NewUserService(mockRepo)
@@ -179,6 +188,7 @@ func TestUpdateUser_UpdateFails(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
+// GetUserBy (ID|Email|Username)
 func TestGetUserByID(t *testing.T) {
 	mockRepo, userService := setupTest()
 
@@ -219,5 +229,34 @@ func TestGetUserByUsername(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUser, result)
+	mockRepo.AssertExpectations(t)
+}
+
+// DeleteUser
+func TestDeleteUser_Success(t *testing.T) {
+	mockRepo, userService := setupTest()
+	userID := uuid.New()
+
+	mockRepo.On("DeleteUser", userID).Return(nil)
+
+	err := userService.DeleteUser(userID)
+	assert.NoError(t, err)
+
+	mockRepo.AssertExpectations(t)
+}
+
+func TestDeleteUser_Failure(t *testing.T) {
+	mockRepo, userService := setupTest()
+
+	userID := uuid.New()
+	expectedErr := errors.New("delete failed")
+
+	mockRepo.On("DeleteUser", userID).Return(expectedErr)
+
+	err := userService.DeleteUser(userID)
+
+	assert.Error(t, err)
+	assert.Equal(t, expectedErr, err)
+
 	mockRepo.AssertExpectations(t)
 }

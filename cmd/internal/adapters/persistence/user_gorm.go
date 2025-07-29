@@ -78,6 +78,10 @@ func (gormUser *GormUserRepository) UpdateUser(id uuid.UUID, fields map[string]i
 	return toDomainUser(&updatedModel), nil
 }
 
+func (gormUser *GormUserRepository) DeleteUser(id uuid.UUID) error {
+	return gormUser.db.Delete(&UserModel{}, id).Error
+}
+
 func (gormUser *GormUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	var usermodel UserModel
 

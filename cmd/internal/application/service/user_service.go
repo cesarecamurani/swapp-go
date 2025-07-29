@@ -51,6 +51,10 @@ func (userService *UserService) UpdateUser(id uuid.UUID, fields map[string]inter
 	return updatedUser, nil
 }
 
+func (userService *UserService) DeleteUser(id uuid.UUID) error {
+	return userService.repo.DeleteUser(id)
+}
+
 func (userService *UserService) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	return userService.repo.GetUserByID(id)
 }

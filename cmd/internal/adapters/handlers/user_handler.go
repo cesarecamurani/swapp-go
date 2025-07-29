@@ -108,6 +108,26 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 	respondWithUser(context, http.StatusOK, "User updated successfully!", updatedUser)
 }
 
+func (userHandler *UserHandler) DeleteUser(context *gin.Context) {
+	userID := context.GetString("userID")
+
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		badRequestResponse(context, "Invalid user ID", err)
+		return
+	}
+
+	if err = userHandler.userService.DeleteUser(parsedID); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to delete user",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"message": "User deleted successfully!"})
+}
+
 func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
 	id := context.Param("id")
 

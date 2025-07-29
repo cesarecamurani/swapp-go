@@ -35,8 +35,7 @@ type UserResponse struct {
 	} `json:"user"`
 }
 
-// -- Constants and shared variables --
-
+// Constants and shared variables
 const (
 	invalidRequestErr    = "Invalid request"
 	expectedUsernameErr  = "username already exists"
@@ -86,6 +85,10 @@ func (m *MockUserService) UpdateUser(id uuid.UUID, fields map[string]interface{}
 	return nil, args.Error(1)
 }
 
+func (m *MockUserService) DeleteUser(id uuid.UUID) error {
+	return m.Called(id).Error(0)
+}
+
 func (m *MockUserService) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	args := m.Called(id)
 
@@ -131,9 +134,13 @@ func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	router := gin.Default()
 	router.POST("/users/register", handler.RegisterUser)
 	router.POST("/users/login", handler.LoginUser)
-	router.PATCH("/users/update", func(c *gin.Context) {
-		c.Set("userID", uuid.Nil.String())
-		handler.UpdateUser(c)
+	router.PATCH("/users/update", func(context *gin.Context) {
+		context.Set("userID", uuid.Nil.String())
+		handler.UpdateUser(context)
+	})
+	router.DELETE("/users/delete", func(context *gin.Context) {
+		context.Set("userID", uuid.Nil.String())
+		handler.DeleteUser(context)
 	})
 
 	return router
@@ -204,7 +211,6 @@ func parseLoginResponse(t *testing.T, response *httptest.ResponseRecorder) *hand
 }
 
 // Tests
-
 // RegisterUser
 func TestRegisterUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
@@ -358,11 +364,6 @@ func TestUpdateUser_Failure(t *testing.T) {
 		handler.UpdateUser(context)
 	})
 
-	updatePayload := map[string]interface{}{
-		"username": updatedUsername,
-		"email":    updatedEmail,
-	}
-
 	expectedErr := errors.New("user not found")
 
 	mockService.
@@ -387,6 +388,47 @@ func TestUpdateUser_Failure(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedErr.Error(), errResponse.Error)
 	assert.Empty(t, errResponse.Details)
+
+	mockService.AssertExpectations(t)
+}
+
+// DeleteUser
+func TestDeleteUser_Success(t *testing.T) {
+	mockService, router := setupTest(t)
+
+	mockService.
+		On("DeleteUser", uuid.Nil).
+		Return(nil)
+
+	response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	var parsed map[string]string
+
+	err := json.Unmarshal(response.Body.Bytes(), &parsed)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "User deleted successfully!", parsed["message"])
+
+	mockService.AssertExpectations(t)
+}
+
+func TestDeleteUser_Failure(t *testing.T) {
+	mockService, router := setupTest(t)
+
+	mockService.
+		On("DeleteUser", uuid.Nil).
+		Return(errors.New("something went wrong"))
+
+	response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
+
+	assert.Equal(t, http.StatusInternalServerError, response.Code)
+
+	errResponse := parseErrorResponse(t, response)
+
+	assert.Equal(t, "Failed to delete user", errResponse.Error)
+	assert.Equal(t, "something went wrong", errResponse.Details)
 
 	mockService.AssertExpectations(t)
 }

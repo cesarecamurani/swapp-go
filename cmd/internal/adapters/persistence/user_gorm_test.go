@@ -10,6 +10,12 @@ import (
 	"testing"
 )
 
+var user = &domain.User{
+	Username: "test_user",
+	Password: "hashed_password",
+	Email:    "test@email.com",
+}
+
 func setupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
@@ -23,12 +29,6 @@ func setupTestDB(t *testing.T) *gorm.DB {
 func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 	db := setupTestDB(t)
 	repo := persistence.NewGormUserRepository(db)
-
-	user := &domain.User{
-		Username: "test_user",
-		Password: "hashed_password",
-		Email:    "test@email.com",
-	}
 
 	err := repo.CreateUser(user)
 	assert.NoError(t, err)
@@ -53,15 +53,31 @@ func TestGormUserRepository_NotFound(t *testing.T) {
 	repo := persistence.NewGormUserRepository(db)
 
 	randomID := uuid.New()
-	user, err := repo.GetUserByID(randomID)
+	notFoundUser, err := repo.GetUserByID(randomID)
 	assert.Error(t, err)
-	assert.Nil(t, user)
+	assert.Nil(t, notFoundUser)
 
-	user, err = repo.GetUserByUsername("non_existent_username")
+	notFoundUser, err = repo.GetUserByUsername("non_existent_username")
 	assert.Error(t, err)
-	assert.Nil(t, user)
+	assert.Nil(t, notFoundUser)
 
-	user, err = repo.GetUserByEmail("nonexistent.email@example.com")
+	notFoundUser, err = repo.GetUserByEmail("nonexistent.email@example.com")
 	assert.Error(t, err)
-	assert.Nil(t, user)
+	assert.Nil(t, notFoundUser)
+}
+
+func TestDeleteUser(t *testing.T) {
+	db := setupTestDB(t) // e.g. SQLite in-memory
+	repo := persistence.NewGormUserRepository(db)
+
+	assert.NoError(t, db.Create(user).Error)
+
+	err := repo.DeleteUser(user.ID)
+	assert.NoError(t, err)
+
+	var found persistence.UserModel
+
+	err = db.First(&found, "id = ?", user.ID).Error
+
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }

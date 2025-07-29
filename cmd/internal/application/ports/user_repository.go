@@ -8,6 +8,7 @@ import (
 type UserRepository interface {
 	CreateUser(user *domain.User) error
 	UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error)
+	DeleteUser(id uuid.UUID) error
 	GetUserByID(id uuid.UUID) (*domain.User, error)
 	GetUserByUsername(username string) (*domain.User, error)
 	GetUserByEmail(email string) (*domain.User, error)
