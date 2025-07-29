@@ -10,11 +10,17 @@ import (
 	"testing"
 )
 
-var user = &domain.User{
-	Username: "test_user",
-	Password: "hashed_password",
-	Email:    "test@email.com",
-}
+var (
+	phone   = "+441234567890"
+	address = "1, Main Street"
+	user    = &domain.User{
+		Username: "test_user",
+		Password: "hashed_password",
+		Email:    "test@email.com",
+		Phone:    &phone,
+		Address:  &address,
+	}
+)
 
 func setupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
@@ -38,6 +44,10 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, user.Username, userByID.Username)
 	assert.Equal(t, user.Email, userByID.Email)
+	assert.NotNil(t, userByID.Phone)
+	assert.NotNil(t, userByID.Address)
+	assert.Equal(t, *user.Phone, *userByID.Phone)
+	assert.Equal(t, *user.Address, *userByID.Address)
 
 	userByUsername, err := repo.GetUserByUsername(user.Username)
 	assert.NoError(t, err)
@@ -46,6 +56,32 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 	userByEmail, err := repo.GetUserByEmail(user.Email)
 	assert.NoError(t, err)
 	assert.Equal(t, user.ID, userByEmail.ID)
+}
+
+func TestGormUserRepository_UpdateUser(t *testing.T) {
+	db := setupTestDB(t)
+	repo := persistence.NewGormUserRepository(db)
+
+	err := repo.CreateUser(user)
+	assert.NoError(t, err)
+
+	updatedPhone := "+44778654321"
+	updatedAddress := "2, Main Street"
+	updatedFields := map[string]interface{}{
+		"username": "updated_user",
+		"email":    "updated@example.com",
+		"phone":    updatedPhone,
+		"address":  updatedAddress,
+	}
+
+	updatedUser, err := repo.UpdateUser(user.ID, updatedFields)
+	assert.NoError(t, err)
+	assert.Equal(t, "updated_user", updatedUser.Username)
+	assert.Equal(t, "updated@example.com", updatedUser.Email)
+	assert.NotNil(t, updatedUser.Phone)
+	assert.NotNil(t, updatedUser.Address)
+	assert.Equal(t, updatedPhone, *updatedUser.Phone)
+	assert.Equal(t, updatedAddress, *updatedUser.Address)
 }
 
 func TestGormUserRepository_NotFound(t *testing.T) {

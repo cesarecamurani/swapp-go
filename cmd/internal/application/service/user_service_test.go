@@ -10,9 +10,17 @@ import (
 	"testing"
 )
 
-var username = "test_user"
-var email = "test@example.com"
-var password = "password123"
+var (
+	username        = "test_user"
+	email           = "test@example.com"
+	password        = "password123"
+	phone           = "+447712345678"
+	address         = "1, Main Street"
+	updatedUsername = "updated_user"
+	updatedEmail    = "updated@example.com"
+	updatedPhone    = "+44778654321"
+	updatedAddress  = "2, Main Street"
+)
 
 // Mocks
 type MockUserRepository struct {
@@ -83,6 +91,8 @@ func TestRegisterUser_Success(t *testing.T) {
 	user := &domain.User{
 		Username: username,
 		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
 		Password: password,
 	}
 
@@ -102,6 +112,8 @@ func TestRegisterUser_EmailAlreadyExists(t *testing.T) {
 	user := &domain.User{
 		Username: username,
 		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
 		Password: password,
 	}
 
@@ -119,6 +131,8 @@ func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
 	user := &domain.User{
 		Username: username,
 		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
 		Password: password,
 	}
 
@@ -139,17 +153,23 @@ func TestUpdateUser_Success(t *testing.T) {
 	userID := uuid.New()
 	existingUser := &domain.User{
 		ID:       userID,
-		Username: "old_user",
-		Email:    "olduser@email.com",
+		Username: username,
+		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
 	}
 	updatedFields := map[string]interface{}{
-		"username": "new_user",
-		"email":    "newuser@email.com",
+		"username": updatedUsername,
+		"email":    updatedEmail,
+		"phone":    updatedPhone,
+		"address":  updatedAddress,
 	}
 	updatedUser := &domain.User{
 		ID:       userID,
-		Username: "new_user",
-		Email:    "newuser@email.com",
+		Username: updatedUsername,
+		Email:    updatedEmail,
+		Phone:    &updatedPhone,
+		Address:  &updatedAddress,
 	}
 
 	mockRepo.On("GetUserByID", userID).Return(existingUser, nil)
@@ -159,6 +179,8 @@ func TestUpdateUser_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedUser.Username, user.Username)
 	assert.Equal(t, updatedUser.Email, user.Email)
+	assert.Equal(t, *updatedUser.Phone, *user.Phone)
+	assert.Equal(t, *updatedUser.Address, *user.Address)
 
 	mockRepo.AssertExpectations(t)
 }
@@ -193,7 +215,14 @@ func TestGetUserByID(t *testing.T) {
 	mockRepo, userService := setupTest()
 
 	userID := uuid.New()
-	expectedUser := &domain.User{ID: userID, Username: username, Email: email, Password: password}
+	expectedUser := &domain.User{
+		ID:       userID,
+		Username: username,
+		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
+		Password: password,
+	}
 
 	mockRepo.On("GetUserByID", userID).Return(expectedUser, nil)
 
@@ -207,7 +236,12 @@ func TestGetUserByID(t *testing.T) {
 func TestGetUserByEmail(t *testing.T) {
 	mockRepo, userService := setupTest()
 
-	expectedUser := &domain.User{Email: email, Username: username, Password: password}
+	expectedUser := &domain.User{
+		Username: username,
+		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
+		Password: password}
 
 	mockRepo.On("GetUserByEmail", email).Return(expectedUser, nil)
 
@@ -221,7 +255,13 @@ func TestGetUserByEmail(t *testing.T) {
 func TestGetUserByUsername(t *testing.T) {
 	mockRepo, userService := setupTest()
 
-	expectedUser := &domain.User{Username: username, Email: email, Password: password}
+	expectedUser := &domain.User{
+		Username: username,
+		Email:    email,
+		Phone:    &phone,
+		Address:  &address,
+		Password: password,
+	}
 
 	mockRepo.On("GetUserByUsername", username).Return(expectedUser, nil)
 

@@ -5,12 +5,14 @@ import (
 	"log"
 	"swapp-go/cmd/internal/adapters/persistence"
 	"swapp-go/cmd/internal/config"
+	"swapp-go/cmd/internal/validators"
 )
 
 func main() {
 	config.LoadEnv()
 	config.InitDB()
 	migrate()
+	validators.Init()
 
 	router := gin.Default()
 	db := config.GetDB()

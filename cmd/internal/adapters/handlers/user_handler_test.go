@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"swapp-go/cmd/internal/adapters/handlers"
 	"swapp-go/cmd/internal/domain"
+	"swapp-go/cmd/internal/validators"
 	"testing"
 )
 
@@ -47,6 +48,8 @@ var (
 	username  = "test_user"
 	email     = "test@example.com"
 	password  = "password123"
+	phone     = "+447712345678"
+	address   = "1, Main Street"
 	testToken = "test-token"
 
 	domainUser = domain.User{
@@ -57,16 +60,22 @@ var (
 
 	updatedUsername = "updated_user"
 	updatedEmail    = "updated@example.com"
+	updatedPhone    = "+447787654321"
+	updatedAddress  = "2, Main Street"
 
 	updatePayload = map[string]interface{}{
 		"username": updatedUsername,
 		"email":    updatedEmail,
+		"phone":    updatedPhone,
+		"address":  updatedAddress,
 	}
 
 	updatedUser = &domain.User{
 		ID:       uuid.Nil,
 		Username: updatedUsername,
 		Email:    updatedEmail,
+		Phone:    &updatedPhone,
+		Address:  &updatedAddress,
 	}
 )
 
@@ -130,6 +139,8 @@ func (m *MockUserService) Authenticate(username, password string) (string, *doma
 // Helper Functions
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
+
+	validators.Init()
 
 	router := gin.Default()
 	router.POST("/users/register", handler.RegisterUser)
@@ -223,6 +234,8 @@ func TestRegisterUser_Success(t *testing.T) {
 		"username": username,
 		"email":    email,
 		"password": password,
+		"phone":    phone,
+		"address":  address,
 	}
 
 	response := performRequest(t, router, http.MethodPost, "/users/register", userPayload)
@@ -286,6 +299,8 @@ func TestLoginUser_Success(t *testing.T) {
 		Username: username,
 		Email:    email,
 		Password: password,
+		Phone:    &phone,
+		Address:  &address,
 	}
 
 	mockService.
@@ -299,6 +314,8 @@ func TestLoginUser_Success(t *testing.T) {
 	assert.Equal(t, testUser.ID.String(), loginResponse.UserID)
 	assert.Equal(t, testUser.Username, loginResponse.Username)
 	assert.Equal(t, testUser.Email, loginResponse.Email)
+	assert.Equal(t, testUser.Phone, loginResponse.Phone)
+	assert.Equal(t, testUser.Address, loginResponse.Address)
 	assert.Equal(t, testToken, loginResponse.Token)
 
 	mockService.AssertExpectations(t)
@@ -338,7 +355,10 @@ func TestUpdateUser_Success(t *testing.T) {
 
 	mockService.
 		On("UpdateUser", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
-			return fields["username"] == updatedUsername && fields["email"] == updatedEmail
+			return fields["username"] == updatedUsername &&
+				fields["email"] == updatedEmail &&
+				fields["phone"] == updatedPhone &&
+				fields["address"] == updatedAddress
 		})).
 		Return(updatedUser, nil)
 
@@ -347,7 +367,9 @@ func TestUpdateUser_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	var parsedResponse UserResponse
+
 	err := json.Unmarshal(response.Body.Bytes(), &parsedResponse)
+
 	assert.NoError(t, err)
 	assert.Equal(t, updateUserSuccessMsg, parsedResponse.Message)
 
@@ -368,7 +390,10 @@ func TestUpdateUser_Failure(t *testing.T) {
 
 	mockService.
 		On("UpdateUser", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
-			return fields["username"] == updatedUsername && fields["email"] == updatedEmail
+			return fields["username"] == updatedUsername &&
+				fields["email"] == updatedEmail &&
+				fields["phone"] == updatedPhone &&
+				fields["address"] == updatedAddress
 		})).
 		Return(nil, expectedErr)
 
@@ -390,6 +415,25 @@ func TestUpdateUser_Failure(t *testing.T) {
 	assert.Empty(t, errResponse.Details)
 
 	mockService.AssertExpectations(t)
+}
+
+func TestUpdateUser_InvalidPhone(t *testing.T) {
+	_, router := setupTest(t)
+
+	invalidPhonePayload := map[string]interface{}{
+		"username": updatedUsername,
+		"email":    updatedEmail,
+		"phone":    "1234567890",
+		"address":  updatedAddress,
+	}
+
+	response := performRequest(t, router, http.MethodPatch, "/users/update", invalidPhonePayload)
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+
+	errResp := parseErrorResponse(t, response)
+	assert.Equal(t, invalidRequestErr, errResp.Error)
+	assert.Contains(t, errResp.Details, "Phone")
 }
 
 // DeleteUser

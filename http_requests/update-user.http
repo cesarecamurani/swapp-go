@@ -4,5 +4,7 @@ Authorization: Bearer
 
 {
   "username": "",
-  "email": ""
+  "email": "",
+  "phone": "",
+  "address": "C"
 }

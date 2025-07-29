@@ -21,6 +21,8 @@ type UserModel struct {
 	Username  string    `gorm:"uniqueIndex;not null"`
 	Password  string    `gorm:"not null"`
 	Email     string    `gorm:"uniqueIndex;not null"`
+	Phone     *string
+	Address   *string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -40,6 +42,8 @@ func toUserModel(user *domain.User) *UserModel {
 		Username: user.Username,
 		Password: user.Password,
 		Email:    user.Email,
+		Phone:    user.Phone,
+		Address:  user.Address,
 	}
 }
 
@@ -49,6 +53,8 @@ func toDomainUser(model *UserModel) *domain.User {
 		Username: model.Username,
 		Password: model.Password,
 		Email:    model.Email,
+		Phone:    model.Phone,
+		Address:  model.Address,
 	}
 }
 

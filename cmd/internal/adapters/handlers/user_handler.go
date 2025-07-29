@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nyaruka/phonenumbers"
 	"net/http"
 	"swapp-go/cmd/internal/application/service"
 	"swapp-go/cmd/internal/domain"
@@ -17,9 +18,11 @@ func NewUserHandler(userServiceInterface service.UserServiceInterface) *UserHand
 }
 
 type RegisterUserRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
+	Username string  `json:"username" binding:"required"`
+	Password string  `json:"password" binding:"required"`
+	Email    string  `json:"email" binding:"required,email"`
+	Phone    *string `json:"phone,omitempty"`
+	Address  *string `json:"address,omitempty"`
 }
 
 type LoginUserRequest struct {
@@ -29,13 +32,17 @@ type LoginUserRequest struct {
 
 type UpdateUserRequest struct {
 	Username *string `json:"username,omitempty"`
-	Email    *string `json:"email,omitempty"`
+	Email    *string `json:"email,omitempty" binding:"omitempty,email"`
+	Phone    *string `json:"phone,omitempty" binding:"omitempty,phone"`
+	Address  *string `json:"address,omitempty"`
 }
 
 type UserResponse struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	UserID   string  `json:"user_id"`
+	Username string  `json:"username"`
+	Email    string  `json:"email"`
+	Phone    *string `json:"phone,omitempty"`
+	Address  *string `json:"address,omitempty"`
 }
 
 type UserSuccessResponse struct {
@@ -44,10 +51,12 @@ type UserSuccessResponse struct {
 }
 
 type LoginUserResponse struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Token    string `json:"token"`
+	UserID   string  `json:"user_id"`
+	Username string  `json:"username"`
+	Email    string  `json:"email"`
+	Phone    *string `json:"phone"`
+	Address  *string `json:"address"`
+	Token    string  `json:"token"`
 }
 
 func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
@@ -62,6 +71,8 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 		Username: request.Username,
 		Password: request.Password,
 		Email:    request.Email,
+		Phone:    request.Phone,
+		Address:  request.Address,
 	}
 
 	if err := userHandler.userService.RegisterUser(user); err != nil {
@@ -93,6 +104,18 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 	}
 	if request.Email != nil {
 		updateData["email"] = *request.Email
+	}
+	if request.Phone != nil {
+		parsed, phoneErr := phonenumbers.Parse(*request.Phone, "")
+		if phoneErr != nil || !phonenumbers.IsValidNumber(parsed) {
+			badRequestResponse(context, "Invalid phone number", phoneErr)
+			return
+		}
+		formattedPhone := phonenumbers.Format(parsed, phonenumbers.E164)
+		updateData["phone"] = formattedPhone
+	}
+	if request.Address != nil {
+		updateData["address"] = *request.Address
 	}
 	if len(updateData) == 0 {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "No valid fields provided for update"})
@@ -147,6 +170,8 @@ func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
 		UserID:   user.ID.String(),
 		Username: user.Username,
 		Email:    user.Email,
+		Phone:    user.Phone,
+		Address:  user.Address,
 	}
 
 	context.JSON(http.StatusOK, response)
@@ -170,6 +195,8 @@ func (userHandler *UserHandler) LoginUser(context *gin.Context) {
 		UserID:   user.ID.String(),
 		Username: user.Username,
 		Email:    user.Email,
+		Phone:    user.Phone,
+		Address:  user.Address,
 		Token:    token,
 	}
 
@@ -183,6 +210,8 @@ func respondWithUser(context *gin.Context, status int, message string, user *dom
 			UserID:   user.ID.String(),
 			Username: user.Username,
 			Email:    user.Email,
+			Phone:    user.Phone,
+			Address:  user.Address,
 		},
 	}
 	context.JSON(status, response)
