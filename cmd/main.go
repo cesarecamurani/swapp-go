@@ -27,8 +27,11 @@ func main() {
 }
 
 func migrate() {
-	err := config.DB.AutoMigrate(&persistence.UserModel{})
-	if err != nil {
-		return
+	if err := config.DB.AutoMigrate(&persistence.UserModel{}); err != nil {
+		log.Fatalf("failed to migrate UserModel: %v", err)
+	}
+
+	if err := config.DB.AutoMigrate(&persistence.PasswordResetModel{}); err != nil {
+		log.Fatalf("failed to migrate PasswordResetTokenModel: %v", err)
 	}
 }

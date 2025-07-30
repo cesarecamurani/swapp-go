@@ -12,7 +12,7 @@ import (
 
 var (
 	phone   = "+441234567890"
-	address = "1, Main Street"
+	address = "1, Old Street"
 	user    = &domain.User{
 		Username: "test_user",
 		Password: "hashed_password",
@@ -22,7 +22,7 @@ var (
 	}
 )
 
-func setupTestDB(t *testing.T) *gorm.DB {
+func setupUserTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
 
@@ -33,7 +33,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupUserTestDB(t)
 	repo := persistence.NewGormUserRepository(db)
 
 	err := repo.CreateUser(user)
@@ -59,7 +59,7 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 }
 
 func TestGormUserRepository_UpdateUser(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupUserTestDB(t)
 	repo := persistence.NewGormUserRepository(db)
 
 	err := repo.CreateUser(user)
@@ -85,7 +85,7 @@ func TestGormUserRepository_UpdateUser(t *testing.T) {
 }
 
 func TestGormUserRepository_NotFound(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupUserTestDB(t)
 	repo := persistence.NewGormUserRepository(db)
 
 	randomID := uuid.New()
@@ -103,7 +103,7 @@ func TestGormUserRepository_NotFound(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	db := setupTestDB(t) // e.g. SQLite in-memory
+	db := setupUserTestDB(t) // e.g. SQLite in-memory
 	repo := persistence.NewGormUserRepository(db)
 
 	assert.NoError(t, db.Create(user).Error)

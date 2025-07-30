@@ -15,8 +15,15 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 	userService := service.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
 
+	passwordResetRepo := persistence.NewGormPasswordResetRepository(db)
+	passwordResetService := service.NewPasswordResetService(passwordResetRepo)
+	passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetService, userService)
+
 	server.POST("/users/register", userHandler.RegisterUser)
 	server.POST("/users/login", userHandler.LoginUser)
+
+	server.POST("/password-reset/request", passwordResetHandler.RequestReset)
+	server.POST("/password-reset/reset", passwordResetHandler.ResetPassword)
 
 	// Protected routes
 	protected := server.Group("/")
