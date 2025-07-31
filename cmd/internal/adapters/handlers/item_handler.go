@@ -18,18 +18,6 @@ func NewItemHandler(itemServiceInterface services.ItemServiceInterface) *ItemHan
 	return &ItemHandler{itemServiceInterface}
 }
 
-type CreateItemRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	PictureURL  string `json:"picture"`
-}
-
-type UpdateItemRequest struct {
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-	PictureURL  string `json:"picture,omitempty"`
-}
-
 type ItemResponse struct {
 	ItemID      string `json:"item_id"`
 	Name        string `json:"name"`
