@@ -1,0 +1,2 @@
+DELETE localhost:9000/items/delete/:id
+Authorization: Bearer

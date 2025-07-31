@@ -4,14 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"swapp-go/cmd/internal/application/service"
+	"swapp-go/cmd/internal/application/services"
 	"swapp-go/cmd/internal/utils"
 	"time"
 )
 
 type PasswordResetHandler struct {
-	ResetService *service.PasswordResetService
-	UserService  *service.UserService
+	ResetService *services.PasswordResetService
+	UserService  *services.UserService
 }
 
 type PasswordResetRequest struct {
@@ -23,7 +23,7 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 
-func NewPasswordResetHandler(resetService *service.PasswordResetService, userService *service.UserService) *PasswordResetHandler {
+func NewPasswordResetHandler(resetService *services.PasswordResetService, userService *services.UserService) *PasswordResetHandler {
 	return &PasswordResetHandler{
 		ResetService: resetService,
 		UserService:  userService,

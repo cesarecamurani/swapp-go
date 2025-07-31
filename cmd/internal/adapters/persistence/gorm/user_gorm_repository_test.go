@@ -1,11 +1,12 @@
-package persistence_test
+package gorm_test
 
 import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"swapp-go/cmd/internal/adapters/persistence"
+	gormRepo "swapp-go/cmd/internal/adapters/persistence/gorm"
+	"swapp-go/cmd/internal/adapters/persistence/models"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )
@@ -26,7 +27,7 @@ func setupUserTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
 
-	err = db.AutoMigrate(&persistence.UserModel{})
+	err = db.AutoMigrate(&models.UserModel{})
 	assert.NoError(t, err)
 
 	return db
@@ -34,7 +35,7 @@ func setupUserTestDB(t *testing.T) *gorm.DB {
 
 func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 	db := setupUserTestDB(t)
-	repo := persistence.NewGormUserRepository(db)
+	repo := gormRepo.NewUserGormRepository(db)
 
 	err := repo.CreateUser(user)
 	assert.NoError(t, err)
@@ -60,7 +61,7 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 
 func TestGormUserRepository_UpdateUser(t *testing.T) {
 	db := setupUserTestDB(t)
-	repo := persistence.NewGormUserRepository(db)
+	repo := gormRepo.NewUserGormRepository(db)
 
 	err := repo.CreateUser(user)
 	assert.NoError(t, err)
@@ -86,7 +87,7 @@ func TestGormUserRepository_UpdateUser(t *testing.T) {
 
 func TestGormUserRepository_NotFound(t *testing.T) {
 	db := setupUserTestDB(t)
-	repo := persistence.NewGormUserRepository(db)
+	repo := gormRepo.NewUserGormRepository(db)
 
 	randomID := uuid.New()
 	notFoundUser, err := repo.GetUserByID(randomID)
@@ -104,14 +105,14 @@ func TestGormUserRepository_NotFound(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	db := setupUserTestDB(t) // e.g. SQLite in-memory
-	repo := persistence.NewGormUserRepository(db)
+	repo := gormRepo.NewUserGormRepository(db)
 
 	assert.NoError(t, db.Create(user).Error)
 
 	err := repo.DeleteUser(user.ID)
 	assert.NoError(t, err)
 
-	var found persistence.UserModel
+	var found models.UserModel
 
 	err = db.First(&found, "id = ?", user.ID).Error
 

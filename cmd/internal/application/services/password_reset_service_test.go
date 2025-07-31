@@ -1,11 +1,11 @@
-package service_test
+package services_test
 
 import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"swapp-go/cmd/internal/application/service"
+	"swapp-go/cmd/internal/application/services"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 	"time"
@@ -43,7 +43,7 @@ func (m *MockPasswordResetRepository) Delete(token string) error {
 // Tests
 func TestGenerateAndSaveToken_Success(t *testing.T) {
 	repo := new(MockPasswordResetRepository)
-	resetService := service.NewPasswordResetService(repo)
+	resetService := services.NewPasswordResetService(repo)
 	userID := uuid.New()
 
 	repo.On("Save", mock.AnythingOfType("*domain.PasswordReset")).Return(nil)
@@ -56,7 +56,7 @@ func TestGenerateAndSaveToken_Success(t *testing.T) {
 
 func TestValidateToken_Valid(t *testing.T) {
 	repo := new(MockPasswordResetRepository)
-	resetService := service.NewPasswordResetService(repo)
+	resetService := services.NewPasswordResetService(repo)
 
 	expiredAt := time.Now().Add(1 * time.Hour)
 	resetToken := &domain.PasswordReset{
@@ -74,7 +74,7 @@ func TestValidateToken_Valid(t *testing.T) {
 
 func TestValidateToken_Invalid(t *testing.T) {
 	repo := new(MockPasswordResetRepository)
-	resetService := service.NewPasswordResetService(repo)
+	resetService := services.NewPasswordResetService(repo)
 
 	repo.On("GetByToken", invalidToken).Return(nil, errors.New("not found"))
 
@@ -86,7 +86,7 @@ func TestValidateToken_Invalid(t *testing.T) {
 
 func TestDeleteToken_Success(t *testing.T) {
 	repo := new(MockPasswordResetRepository)
-	resetService := service.NewPasswordResetService(repo)
+	resetService := services.NewPasswordResetService(repo)
 
 	repo.On("Delete", validToken).Return(nil)
 

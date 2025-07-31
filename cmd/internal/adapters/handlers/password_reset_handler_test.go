@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"swapp-go/cmd/internal/adapters/handlers"
-	"swapp-go/cmd/internal/adapters/persistence"
-	"swapp-go/cmd/internal/application/service"
+	gormRepo "swapp-go/cmd/internal/adapters/persistence/gorm"
+	"swapp-go/cmd/internal/adapters/persistence/models"
+	"swapp-go/cmd/internal/application/services"
 	"swapp-go/cmd/internal/domain"
 	"swapp-go/cmd/internal/utils"
 	"testing"
@@ -25,15 +26,15 @@ func setupPasswordResetTestEnv(t *testing.T) (*gin.Engine, *gorm.DB, *domain.Use
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
 
-	err = db.AutoMigrate(&persistence.UserModel{}, &persistence.PasswordResetModel{})
+	err = db.AutoMigrate(&models.UserModel{}, &models.PasswordResetModel{})
 	if err != nil {
 		return nil, nil, nil, ""
 	}
 
-	userRepo := persistence.NewGormUserRepository(db)
-	resetRepo := persistence.NewGormPasswordResetRepository(db)
-	userService := service.NewUserService(userRepo)
-	resetService := service.NewPasswordResetService(resetRepo)
+	userRepo := gormRepo.NewUserGormRepository(db)
+	resetRepo := gormRepo.NewPasswordResetGormRepository(db)
+	userService := services.NewUserService(userRepo)
+	resetService := services.NewPasswordResetService(resetRepo)
 
 	handler := handlers.NewPasswordResetHandler(resetService, userService)
 	router := gin.Default()
@@ -69,8 +70,8 @@ func TestRequestReset_Success(t *testing.T) {
 
 func TestResetPassword_Success(t *testing.T) {
 	router, db, user, _ := setupPasswordResetTestEnv(t)
-	resetRepo := persistence.NewGormPasswordResetRepository(db)
-	resetService := service.NewPasswordResetService(resetRepo)
+	resetRepo := gormRepo.NewPasswordResetGormRepository(db)
+	resetService := services.NewPasswordResetService(resetRepo)
 
 	token, err := resetService.GenerateAndSaveToken(user.ID)
 	assert.NoError(t, err)
@@ -109,7 +110,7 @@ func TestResetPassword_InvalidToken(t *testing.T) {
 
 func TestResetPassword_ExpiredToken(t *testing.T) {
 	router, db, user, _ := setupPasswordResetTestEnv(t)
-	resetRepo := persistence.NewGormPasswordResetRepository(db)
+	resetRepo := gormRepo.NewPasswordResetGormRepository(db)
 
 	expired := &domain.PasswordReset{
 		Token:     uuid.NewString(),

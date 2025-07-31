@@ -1,0 +1,2 @@
+GET localhost:9000/users/:id
+Authorization: Bearer

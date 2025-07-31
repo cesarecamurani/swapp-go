@@ -1,10 +1,10 @@
-POST localhost:8080/users/register
+PATCH localhost:9000/users/update
 Content-Type: application/json
+Authorization: Bearer
 
 {
   "username": "",
-  "password": "",
   "email": "",
   "phone": "",
-  "address": ""
+  "address": "C"
 }

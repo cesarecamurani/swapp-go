@@ -1,0 +1,20 @@
+POST localhost:9000/items/create
+Authorization: Bearer
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="name"
+
+Name
+
+--WebAppBoundary
+Content-Disposition: form-data; name="description"
+
+Description
+
+--WebAppBoundary
+Content-Disposition: form-data; name="picture"; filename="image.jpg"
+Content-Type: image/jpeg
+
+< path/to/image.jpg
+--WebAppBoundary--

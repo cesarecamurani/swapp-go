@@ -411,8 +411,8 @@ func TestUpdateUser_Failure(t *testing.T) {
 	err := json.Unmarshal(response.Body.Bytes(), &errResponse)
 
 	assert.NoError(t, err)
-	assert.Equal(t, expectedErr.Error(), errResponse.Error)
-	assert.Empty(t, errResponse.Details)
+	assert.Equal(t, "Failed to update user", errResponse.Error)
+	assert.Equal(t, "user not found", errResponse.Details)
 
 	mockService.AssertExpectations(t)
 }

@@ -5,15 +5,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/nyaruka/phonenumbers"
 	"net/http"
-	"swapp-go/cmd/internal/application/service"
+	"swapp-go/cmd/internal/adapters/handlers/responses"
+	"swapp-go/cmd/internal/application/services"
 	"swapp-go/cmd/internal/domain"
 )
 
 type UserHandler struct {
-	userService service.UserServiceInterface
+	userService services.UserServiceInterface
 }
 
-func NewUserHandler(userServiceInterface service.UserServiceInterface) *UserHandler {
+func NewUserHandler(userServiceInterface services.UserServiceInterface) *UserHandler {
 	return &UserHandler{userServiceInterface}
 }
 
@@ -63,7 +64,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	var request RegisterUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
-		badRequestResponse(context, "Invalid request", err)
+		responses.BadRequest(context, "Invalid request", err)
 		return
 	}
 
@@ -76,7 +77,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	}
 
 	if err := userHandler.userService.RegisterUser(user); err != nil {
-		badRequestResponse(context, "Invalid request", err)
+		responses.BadRequest(context, "Invalid request", err)
 		return
 	}
 
@@ -88,13 +89,13 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 
 	var request UpdateUserRequest
 	if err := context.ShouldBindJSON(&request); err != nil {
-		badRequestResponse(context, "Invalid request", err)
+		responses.BadRequest(context, "Invalid request", err)
 		return
 	}
 
 	parsedID, err := uuid.Parse(userID)
 	if err != nil {
-		badRequestResponse(context, "Invalid user ID", err)
+		responses.BadRequest(context, "Invalid user ID", err)
 		return
 	}
 
@@ -108,7 +109,7 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 	if request.Phone != nil {
 		parsed, phoneErr := phonenumbers.Parse(*request.Phone, "")
 		if phoneErr != nil || !phonenumbers.IsValidNumber(parsed) {
-			badRequestResponse(context, "Invalid phone number", phoneErr)
+			responses.BadRequest(context, "Invalid phone number", phoneErr)
 			return
 		}
 		formattedPhone := phonenumbers.Format(parsed, phonenumbers.E164)
@@ -118,13 +119,13 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 		updateData["address"] = *request.Address
 	}
 	if len(updateData) == 0 {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "No valid fields provided for update"})
+		responses.BadRequest(context, "No valid fields provided for update", nil)
 		return
 	}
 
 	updatedUser, err := userHandler.userService.UpdateUser(parsedID, updateData)
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		responses.InternalServerError(context, "Failed to update user", err)
 		return
 	}
 
@@ -136,15 +137,12 @@ func (userHandler *UserHandler) DeleteUser(context *gin.Context) {
 
 	parsedID, err := uuid.Parse(userID)
 	if err != nil {
-		badRequestResponse(context, "Invalid user ID", err)
+		responses.BadRequest(context, "Invalid user ID", err)
 		return
 	}
 
 	if err = userHandler.userService.DeleteUser(parsedID); err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to delete user",
-			"details": err.Error(),
-		})
+		responses.InternalServerError(context, "Failed to delete user", err)
 		return
 	}
 
@@ -156,13 +154,13 @@ func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
 
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID", "details": err.Error()})
+		responses.BadRequest(context, "Invalid user ID", err)
 		return
 	}
 
 	user, err := userHandler.userService.GetUserByID(userID)
 	if err != nil {
-		context.JSON(http.StatusNotFound, gin.H{"error": "User not found", "details": err.Error()})
+		responses.NotFound(context, "User not found", err)
 		return
 	}
 
@@ -181,13 +179,13 @@ func (userHandler *UserHandler) LoginUser(context *gin.Context) {
 	var request LoginUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
+		responses.BadRequest(context, "Invalid request", err)
 		return
 	}
 
 	token, user, err := userHandler.userService.Authenticate(request.Username, request.Password)
 	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "details": err.Error()})
+		responses.Unauthorized(context, "Unauthorized", err)
 		return
 	}
 
@@ -214,12 +212,6 @@ func respondWithUser(context *gin.Context, status int, message string, user *dom
 			Address:  user.Address,
 		},
 	}
-	context.JSON(status, response)
-}
 
-func badRequestResponse(context *gin.Context, message string, err error) {
-	context.JSON(http.StatusBadRequest, gin.H{
-		"error":   message,
-		"details": err.Error(),
-	})
+	context.JSON(status, response)
 }

@@ -1,11 +1,11 @@
-package service_test
+package services_test
 
 import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"swapp-go/cmd/internal/application/service"
+	"swapp-go/cmd/internal/application/services"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )
@@ -76,9 +76,9 @@ func (m *MockUserRepository) GetUserByEmail(email string) (*domain.User, error) 
 }
 
 // Helper Functions
-func setupTest() (*MockUserRepository, *service.UserService) {
+func setupTest() (*MockUserRepository, *services.UserService) {
 	mockRepo := new(MockUserRepository)
-	userService := service.NewUserService(mockRepo)
+	userService := services.NewUserService(mockRepo)
 
 	return mockRepo, userService
 }
@@ -148,7 +148,7 @@ func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
 // UpdateUser
 func TestUpdateUser_Success(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	userService := service.NewUserService(mockRepo)
+	userService := services.NewUserService(mockRepo)
 
 	userID := uuid.New()
 	existingUser := &domain.User{
@@ -187,7 +187,7 @@ func TestUpdateUser_Success(t *testing.T) {
 
 func TestUpdateUser_UpdateFails(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	userService := service.NewUserService(mockRepo)
+	userService := services.NewUserService(mockRepo)
 
 	id := uuid.New()
 	fields := map[string]interface{}{
