@@ -3,9 +3,9 @@ package gorm_test
 import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormRepo "swapp-go/cmd/internal/adapters/persistence/gorm"
+	"swapp-go/cmd/internal/adapters/persistence/gorm/testutils"
 	"swapp-go/cmd/internal/adapters/persistence/models"
 	"swapp-go/cmd/internal/domain"
 	"testing"
@@ -23,18 +23,8 @@ var (
 	}
 )
 
-func setupUserTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	assert.NoError(t, err)
-
-	err = db.AutoMigrate(&models.UserModel{})
-	assert.NoError(t, err)
-
-	return db
-}
-
 func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
-	db := setupUserTestDB(t)
+	db := testutils.SetupTestDB(t, &models.UserModel{})
 	repo := gormRepo.NewUserGormRepository(db)
 
 	err := repo.CreateUser(user)
@@ -60,7 +50,7 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 }
 
 func TestGormUserRepository_UpdateUser(t *testing.T) {
-	db := setupUserTestDB(t)
+	db := testutils.SetupTestDB(t, &models.UserModel{})
 	repo := gormRepo.NewUserGormRepository(db)
 
 	err := repo.CreateUser(user)
@@ -86,7 +76,7 @@ func TestGormUserRepository_UpdateUser(t *testing.T) {
 }
 
 func TestGormUserRepository_NotFound(t *testing.T) {
-	db := setupUserTestDB(t)
+	db := testutils.SetupTestDB(t, &models.UserModel{})
 	repo := gormRepo.NewUserGormRepository(db)
 
 	randomID := uuid.New()
@@ -104,7 +94,7 @@ func TestGormUserRepository_NotFound(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	db := setupUserTestDB(t) // e.g. SQLite in-memory
+	db := testutils.SetupTestDB(t, &models.UserModel{})
 	repo := gormRepo.NewUserGormRepository(db)
 
 	assert.NoError(t, db.Create(user).Error)

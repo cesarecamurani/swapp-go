@@ -6,10 +6,13 @@ import (
 )
 
 func HTTPStatus(context *gin.Context, status int, message string, err error) {
-	context.JSON(status, gin.H{
-		"error":   message,
-		"details": err.Error(),
-	})
+	response := gin.H{"error": message}
+
+	if err != nil {
+		response["details"] = err.Error()
+	}
+
+	context.JSON(status, response)
 }
 
 func BadRequest(context *gin.Context, message string, err error) {

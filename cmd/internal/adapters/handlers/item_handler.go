@@ -156,6 +156,11 @@ func (itemHandler *ItemHandler) verifyItemOwnership(context *gin.Context) (*doma
 	itemID := context.Param("id")
 	userID := context.GetString("userID")
 
+	if userID == "" {
+		responses.BadRequest(context, "Missing user ID in context", nil)
+		return nil, false
+	}
+
 	parsedID, err := uuid.Parse(itemID)
 	if err != nil {
 		responses.BadRequest(context, "Invalid item ID", err)
@@ -170,6 +175,10 @@ func (itemHandler *ItemHandler) verifyItemOwnership(context *gin.Context) (*doma
 	item, err := itemHandler.itemService.GetItemByID(parsedID)
 	if err != nil {
 		responses.NotFound(context, "Item not found", err)
+		return nil, false
+	}
+	if item == nil {
+		responses.InternalServerError(context, "Unexpected nil item returned", nil)
 		return nil, false
 	}
 	if item.UserID != parsedUserID {

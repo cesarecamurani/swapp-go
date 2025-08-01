@@ -3,9 +3,8 @@ package gorm_test
 import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	gormRepo "swapp-go/cmd/internal/adapters/persistence/gorm"
+	"swapp-go/cmd/internal/adapters/persistence/gorm/testutils"
 	"swapp-go/cmd/internal/adapters/persistence/models"
 	"swapp-go/cmd/internal/domain"
 	"testing"
@@ -14,18 +13,8 @@ import (
 
 var validToken = "test_token"
 
-func setupPasswordResetTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	assert.NoError(t, err)
-
-	err = db.AutoMigrate(&models.PasswordResetModel{})
-	assert.NoError(t, err)
-
-	return db
-}
-
 func TestPasswordResetRepository_SaveAndGet(t *testing.T) {
-	db := setupPasswordResetTestDB(t)
+	db := testutils.SetupTestDB(t, &models.PasswordResetModel{})
 	repo := gormRepo.NewPasswordResetGormRepository(db)
 
 	userID := uuid.New()
@@ -50,7 +39,7 @@ func TestPasswordResetRepository_SaveAndGet(t *testing.T) {
 }
 
 func TestPasswordResetRepository_GetByToken_NotFound(t *testing.T) {
-	db := setupPasswordResetTestDB(t)
+	db := testutils.SetupTestDB(t, &models.PasswordResetModel{})
 	repo := gormRepo.NewPasswordResetGormRepository(db)
 
 	result, err := repo.GetByToken("non_existent_token")
@@ -59,7 +48,7 @@ func TestPasswordResetRepository_GetByToken_NotFound(t *testing.T) {
 }
 
 func TestPasswordResetRepository_Delete(t *testing.T) {
-	db := setupPasswordResetTestDB(t)
+	db := testutils.SetupTestDB(t, &models.PasswordResetModel{})
 	repo := gormRepo.NewPasswordResetGormRepository(db)
 
 	userID := uuid.New()

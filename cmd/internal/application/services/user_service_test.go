@@ -75,7 +75,7 @@ func (m *MockUserRepository) GetUserByEmail(email string) (*domain.User, error) 
 	return nil, args.Error(1)
 }
 
-// Helper Functions
+// Test Helpers
 func setupTest() (*MockUserRepository, *services.UserService) {
 	mockRepo := new(MockUserRepository)
 	userService := services.NewUserService(mockRepo)

@@ -136,7 +136,7 @@ func (m *MockUserService) Authenticate(username, password string) (string, *doma
 	return token, user, args.Error(2)
 }
 
-// Helper Functions
+// Test Helpers
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Helper Functions
+// Test Helpers
 func init() {
 	_ = os.Setenv("JWT_SECRET", "test_jwt_secret")
 }
