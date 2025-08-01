@@ -27,11 +27,11 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 	db := testutils.SetupTestDB(t, &models.UserModel{})
 	repo := gormRepo.NewUserGormRepository(db)
 
-	err := repo.CreateUser(user)
+	err := repo.Create(user)
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, user.ID)
 
-	userByID, err := repo.GetUserByID(user.ID)
+	userByID, err := repo.FindByID(user.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, user.Username, userByID.Username)
 	assert.Equal(t, user.Email, userByID.Email)
@@ -40,11 +40,11 @@ func TestGormUserRepository_CreateAndGetUser(t *testing.T) {
 	assert.Equal(t, *user.Phone, *userByID.Phone)
 	assert.Equal(t, *user.Address, *userByID.Address)
 
-	userByUsername, err := repo.GetUserByUsername(user.Username)
+	userByUsername, err := repo.FindByUsername(user.Username)
 	assert.NoError(t, err)
 	assert.Equal(t, user.ID, userByUsername.ID)
 
-	userByEmail, err := repo.GetUserByEmail(user.Email)
+	userByEmail, err := repo.FindByEmail(user.Email)
 	assert.NoError(t, err)
 	assert.Equal(t, user.ID, userByEmail.ID)
 }
@@ -53,7 +53,7 @@ func TestGormUserRepository_UpdateUser(t *testing.T) {
 	db := testutils.SetupTestDB(t, &models.UserModel{})
 	repo := gormRepo.NewUserGormRepository(db)
 
-	err := repo.CreateUser(user)
+	err := repo.Create(user)
 	assert.NoError(t, err)
 
 	updatedPhone := "+44778654321"
@@ -65,7 +65,7 @@ func TestGormUserRepository_UpdateUser(t *testing.T) {
 		"address":  updatedAddress,
 	}
 
-	updatedUser, err := repo.UpdateUser(user.ID, updatedFields)
+	updatedUser, err := repo.Update(user.ID, updatedFields)
 	assert.NoError(t, err)
 	assert.Equal(t, "updated_user", updatedUser.Username)
 	assert.Equal(t, "updated@example.com", updatedUser.Email)
@@ -80,15 +80,15 @@ func TestGormUserRepository_NotFound(t *testing.T) {
 	repo := gormRepo.NewUserGormRepository(db)
 
 	randomID := uuid.New()
-	notFoundUser, err := repo.GetUserByID(randomID)
+	notFoundUser, err := repo.FindByID(randomID)
 	assert.Error(t, err)
 	assert.Nil(t, notFoundUser)
 
-	notFoundUser, err = repo.GetUserByUsername("non_existent_username")
+	notFoundUser, err = repo.FindByUsername("non_existent_username")
 	assert.Error(t, err)
 	assert.Nil(t, notFoundUser)
 
-	notFoundUser, err = repo.GetUserByEmail("nonexistent.email@example.com")
+	notFoundUser, err = repo.FindByEmail("nonexistent.email@example.com")
 	assert.Error(t, err)
 	assert.Nil(t, notFoundUser)
 }
@@ -99,7 +99,7 @@ func TestDeleteUser(t *testing.T) {
 
 	assert.NoError(t, db.Create(user).Error)
 
-	err := repo.DeleteUser(user.ID)
+	err := repo.Delete(user.ID)
 	assert.NoError(t, err)
 
 	var found models.UserModel

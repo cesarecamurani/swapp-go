@@ -84,7 +84,7 @@ func (m *MockUserService) RegisterUser(user *domain.User) error {
 	return m.Called(user).Error(0)
 }
 
-func (m *MockUserService) UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
+func (m *MockUserService) Update(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
 	args := m.Called(id, fields)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -94,11 +94,11 @@ func (m *MockUserService) UpdateUser(id uuid.UUID, fields map[string]interface{}
 	return nil, args.Error(1)
 }
 
-func (m *MockUserService) DeleteUser(id uuid.UUID) error {
+func (m *MockUserService) Delete(id uuid.UUID) error {
 	return m.Called(id).Error(0)
 }
 
-func (m *MockUserService) GetUserByID(id uuid.UUID) (*domain.User, error) {
+func (m *MockUserService) FindByID(id uuid.UUID) (*domain.User, error) {
 	args := m.Called(id)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -108,7 +108,7 @@ func (m *MockUserService) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	return nil, args.Error(1)
 }
 
-func (m *MockUserService) GetUserByUsername(username string) (*domain.User, error) {
+func (m *MockUserService) FindByUsername(username string) (*domain.User, error) {
 	args := m.Called(username)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -118,7 +118,7 @@ func (m *MockUserService) GetUserByUsername(username string) (*domain.User, erro
 	return nil, args.Error(1)
 }
 
-func (m *MockUserService) GetUserByEmail(email string) (*domain.User, error) {
+func (m *MockUserService) FindByEmail(email string) (*domain.User, error) {
 	args := m.Called(email)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -147,11 +147,11 @@ func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	router.POST("/users/login", handler.LoginUser)
 	router.PATCH("/users/update", func(context *gin.Context) {
 		context.Set("userID", uuid.Nil.String())
-		handler.UpdateUser(context)
+		handler.Update(context)
 	})
 	router.DELETE("/users/delete", func(context *gin.Context) {
 		context.Set("userID", uuid.Nil.String())
-		handler.DeleteUser(context)
+		handler.Delete(context)
 	})
 
 	return router
@@ -349,12 +349,12 @@ func TestLoginUser_InvalidJSON(t *testing.T) {
 	assert.Contains(t, errResp.Details, "invalid character")
 }
 
-// UpdateUser
+// Update
 func TestUpdateUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
 
 	mockService.
-		On("UpdateUser", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
+		On("Update", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
 			return fields["username"] == updatedUsername &&
 				fields["email"] == updatedEmail &&
 				fields["phone"] == updatedPhone &&
@@ -383,13 +383,13 @@ func TestUpdateUser_Failure(t *testing.T) {
 	router := gin.Default()
 	router.PATCH("/users/update", func(context *gin.Context) {
 		context.Set("userID", uuid.Nil.String())
-		handler.UpdateUser(context)
+		handler.Update(context)
 	})
 
 	expectedErr := errors.New("user not found")
 
 	mockService.
-		On("UpdateUser", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
+		On("Update", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
 			return fields["username"] == updatedUsername &&
 				fields["email"] == updatedEmail &&
 				fields["phone"] == updatedPhone &&
@@ -436,12 +436,12 @@ func TestUpdateUser_InvalidPhone(t *testing.T) {
 	assert.Contains(t, errResp.Details, "Phone")
 }
 
-// DeleteUser
+// Delete
 func TestDeleteUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
 
 	mockService.
-		On("DeleteUser", uuid.Nil).
+		On("Delete", uuid.Nil).
 		Return(nil)
 
 	response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
@@ -462,7 +462,7 @@ func TestDeleteUser_Failure(t *testing.T) {
 	mockService, router := setupTest(t)
 
 	mockService.
-		On("DeleteUser", uuid.Nil).
+		On("Delete", uuid.Nil).
 		Return(errors.New("something went wrong"))
 
 	response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)

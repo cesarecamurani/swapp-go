@@ -43,7 +43,7 @@ func toDomainUser(model *models.UserModel) *domain.User {
 	}
 }
 
-func (userGorm *UserGormRepository) CreateUser(user *domain.User) error {
+func (userGorm *UserGormRepository) Create(user *domain.User) error {
 	model := toUserModel(user)
 
 	if result := userGorm.db.Create(model); result.Error != nil {
@@ -55,7 +55,7 @@ func (userGorm *UserGormRepository) CreateUser(user *domain.User) error {
 	return nil
 }
 
-func (userGorm *UserGormRepository) UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
+func (userGorm *UserGormRepository) Update(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
 	if err := userGorm.db.Model(&models.UserModel{}).Where("id = ?", id).Updates(fields).Error; err != nil {
 		return nil, err
 	}
@@ -68,11 +68,11 @@ func (userGorm *UserGormRepository) UpdateUser(id uuid.UUID, fields map[string]i
 	return toDomainUser(&updatedUserModel), nil
 }
 
-func (userGorm *UserGormRepository) DeleteUser(id uuid.UUID) error {
+func (userGorm *UserGormRepository) Delete(id uuid.UUID) error {
 	return userGorm.db.Delete(&models.UserModel{}, id).Error
 }
 
-func (userGorm *UserGormRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
+func (userGorm *UserGormRepository) FindByID(id uuid.UUID) (*domain.User, error) {
 	var usermodel models.UserModel
 
 	if err := userGorm.db.First(&usermodel, id).Error; err != nil {
@@ -82,7 +82,7 @@ func (userGorm *UserGormRepository) GetUserByID(id uuid.UUID) (*domain.User, err
 	return toDomainUser(&usermodel), nil
 }
 
-func (userGorm *UserGormRepository) GetUserByUsername(username string) (*domain.User, error) {
+func (userGorm *UserGormRepository) FindByUsername(username string) (*domain.User, error) {
 	var usermodel models.UserModel
 
 	if err := userGorm.db.Where("username = ?", username).First(&usermodel).Error; err != nil {
@@ -92,7 +92,7 @@ func (userGorm *UserGormRepository) GetUserByUsername(username string) (*domain.
 	return toDomainUser(&usermodel), nil
 }
 
-func (userGorm *UserGormRepository) GetUserByEmail(email string) (*domain.User, error) {
+func (userGorm *UserGormRepository) FindByEmail(email string) (*domain.User, error) {
 	var usermodel models.UserModel
 
 	if err := userGorm.db.Where("email = ?", email).First(&usermodel).Error; err != nil {

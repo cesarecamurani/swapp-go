@@ -84,7 +84,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	respondWithUser(context, http.StatusCreated, "User created successfully!", user)
 }
 
-func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
+func (userHandler *UserHandler) Update(context *gin.Context) {
 	userID := context.GetString("userID")
 
 	var request UpdateUserRequest
@@ -123,7 +123,7 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 		return
 	}
 
-	updatedUser, err := userHandler.userService.UpdateUser(parsedID, updateData)
+	updatedUser, err := userHandler.userService.Update(parsedID, updateData)
 	if err != nil {
 		responses.InternalServerError(context, "Failed to update user", err)
 		return
@@ -132,7 +132,7 @@ func (userHandler *UserHandler) UpdateUser(context *gin.Context) {
 	respondWithUser(context, http.StatusOK, "User updated successfully!", updatedUser)
 }
 
-func (userHandler *UserHandler) DeleteUser(context *gin.Context) {
+func (userHandler *UserHandler) Delete(context *gin.Context) {
 	userID := context.GetString("userID")
 
 	parsedID, err := uuid.Parse(userID)
@@ -141,7 +141,7 @@ func (userHandler *UserHandler) DeleteUser(context *gin.Context) {
 		return
 	}
 
-	if err = userHandler.userService.DeleteUser(parsedID); err != nil {
+	if err = userHandler.userService.Delete(parsedID); err != nil {
 		responses.InternalServerError(context, "Failed to delete user", err)
 		return
 	}
@@ -149,7 +149,7 @@ func (userHandler *UserHandler) DeleteUser(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"message": "User deleted successfully!"})
 }
 
-func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
+func (userHandler *UserHandler) FindByID(context *gin.Context) {
 	id := context.Param("id")
 
 	userID, err := uuid.Parse(id)
@@ -158,7 +158,7 @@ func (userHandler *UserHandler) GetUserByID(context *gin.Context) {
 		return
 	}
 
-	user, err := userHandler.userService.GetUserByID(userID)
+	user, err := userHandler.userService.FindByID(userID)
 	if err != nil {
 		responses.NotFound(context, "User not found", err)
 		return

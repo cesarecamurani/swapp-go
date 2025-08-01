@@ -29,17 +29,17 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 	server.POST("/password-reset/request", passwordResetHandler.RequestReset)
 	server.POST("/password-reset/reset", passwordResetHandler.ResetPassword)
 
-	server.GET("/items/:id", itemHandler.GetItemByID)
+	server.GET("/items/:id", itemHandler.FindByID)
 
 	// Protected routes
 	protected := server.Group("/")
 	protected.Use(middleware.JwtAuthMiddleware(os.Getenv("JWT_SECRET")))
 	{
-		protected.GET("/users/:id", userHandler.GetUserByID)
-		protected.PATCH("/users/update", userHandler.UpdateUser)
-		protected.DELETE("/users/delete", userHandler.DeleteUser)
-		protected.POST("/items/create", itemHandler.CreateItem)
-		protected.PUT("/items/update/:id", itemHandler.UpdateItem)
-		protected.DELETE("/items/delete/:id", itemHandler.DeleteItem)
+		protected.GET("/users/:id", userHandler.FindByID)
+		protected.PATCH("/users/update", userHandler.Update)
+		protected.DELETE("/users/delete", userHandler.Delete)
+		protected.POST("/items/create", itemHandler.Create)
+		protected.PUT("/items/update/:id", itemHandler.Update)
+		protected.DELETE("/items/delete/:id", itemHandler.Delete)
 	}
 }

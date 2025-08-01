@@ -38,7 +38,7 @@ func (handler *PasswordResetHandler) RequestReset(context *gin.Context) {
 		return
 	}
 
-	user, err := handler.UserService.GetUserByEmail(request.Email)
+	user, err := handler.UserService.FindByEmail(request.Email)
 	if err != nil || user == nil {
 		context.JSON(http.StatusOK, gin.H{"message": "User not found, no reset token was created."})
 		return
@@ -75,7 +75,7 @@ func (handler *PasswordResetHandler) ResetPassword(context *gin.Context) {
 		return
 	}
 
-	user, err := handler.UserService.GetUserByID(resetToken.UserID)
+	user, err := handler.UserService.FindByID(resetToken.UserID)
 	if err != nil || user == nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "User not found"})
 		return
@@ -87,7 +87,7 @@ func (handler *PasswordResetHandler) ResetPassword(context *gin.Context) {
 		return
 	}
 
-	_, err = handler.UserService.UpdateUser(user.ID, map[string]interface{}{"password": hashedPassword})
+	_, err = handler.UserService.Update(user.ID, map[string]interface{}{"password": hashedPassword})
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update password"})
 		return

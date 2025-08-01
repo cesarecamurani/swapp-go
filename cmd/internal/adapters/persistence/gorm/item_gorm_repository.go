@@ -40,7 +40,7 @@ func toDomainItem(model *models.ItemModel) *domain.Item {
 	}
 }
 
-func (itemGorm *ItemGormRepository) CreateItem(item *domain.Item) error {
+func (itemGorm *ItemGormRepository) Create(item *domain.Item) error {
 	model := toItemModel(item)
 
 	if result := itemGorm.db.Create(model); result.Error != nil {
@@ -52,7 +52,7 @@ func (itemGorm *ItemGormRepository) CreateItem(item *domain.Item) error {
 	return nil
 }
 
-func (itemGorm *ItemGormRepository) UpdateItem(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error) {
+func (itemGorm *ItemGormRepository) Update(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error) {
 	if err := itemGorm.db.Model(&models.ItemModel{}).Where("id = ?", id).Updates(fields).Error; err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ func (itemGorm *ItemGormRepository) UpdateItem(id uuid.UUID, fields map[string]i
 	return toDomainItem(&updatedItemModel), nil
 }
 
-func (itemGorm *ItemGormRepository) DeleteItem(id uuid.UUID) error {
+func (itemGorm *ItemGormRepository) Delete(id uuid.UUID) error {
 	return itemGorm.db.Delete(&models.ItemModel{}, id).Error
 }
 
-func (itemGorm *ItemGormRepository) GetItemByID(id uuid.UUID) (*domain.Item, error) {
+func (itemGorm *ItemGormRepository) FindByID(id uuid.UUID) (*domain.Item, error) {
 	var itemModel models.ItemModel
 
 	if err := itemGorm.db.First(&itemModel, id).Error; err != nil {

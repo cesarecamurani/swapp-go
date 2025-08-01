@@ -14,17 +14,17 @@ func NewItemService(repo ports.ItemRepository) *ItemService {
 	return &ItemService{repo: repo}
 }
 
-func (itemService *ItemService) CreateItem(item *domain.Item) error {
-	return itemService.repo.CreateItem(item)
+func (itemService *ItemService) Create(item *domain.Item) error {
+	return itemService.repo.Create(item)
 }
 
-func (itemService *ItemService) UpdateItem(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error) {
-	_, err := itemService.repo.GetItemByID(id)
+func (itemService *ItemService) Update(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error) {
+	_, err := itemService.repo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	updatedItem, err := itemService.repo.UpdateItem(id, fields)
+	updatedItem, err := itemService.repo.Update(id, fields)
 	if err != nil {
 		return nil, err
 	}
@@ -32,10 +32,10 @@ func (itemService *ItemService) UpdateItem(id uuid.UUID, fields map[string]inter
 	return updatedItem, nil
 }
 
-func (itemService *ItemService) DeleteItem(id uuid.UUID) error {
-	return itemService.repo.DeleteItem(id)
+func (itemService *ItemService) Delete(id uuid.UUID) error {
+	return itemService.repo.Delete(id)
 }
 
-func (itemService *ItemService) GetItemByID(id uuid.UUID) (*domain.Item, error) {
-	return itemService.repo.GetItemByID(id)
+func (itemService *ItemService) FindByID(id uuid.UUID) (*domain.Item, error) {
+	return itemService.repo.FindByID(id)
 }

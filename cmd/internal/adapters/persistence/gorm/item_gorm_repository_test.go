@@ -24,7 +24,7 @@ func TestCreateItem(t *testing.T) {
 	repo := gorm.NewItemGormRepository(db)
 
 	item := createTestItem(uuid.New())
-	err := repo.CreateItem(item)
+	err := repo.Create(item)
 
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, item.ID)
@@ -41,10 +41,10 @@ func TestGetItemByID(t *testing.T) {
 	repo := gorm.NewItemGormRepository(db)
 
 	item := createTestItem(uuid.New())
-	err := repo.CreateItem(item)
+	err := repo.Create(item)
 	assert.NoError(t, err)
 
-	result, err := repo.GetItemByID(item.ID)
+	result, err := repo.FindByID(item.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, item.Name, result.Name)
 }
@@ -54,13 +54,13 @@ func TestUpdateItem(t *testing.T) {
 	repo := gorm.NewItemGormRepository(db)
 
 	item := createTestItem(uuid.New())
-	err := repo.CreateItem(item)
+	err := repo.Create(item)
 	assert.NoError(t, err)
 
 	updatedName := "Updated Name"
 	fields := map[string]interface{}{"name": updatedName}
 
-	updatedItem, err := repo.UpdateItem(item.ID, fields)
+	updatedItem, err := repo.Update(item.ID, fields)
 	assert.NoError(t, err)
 	assert.Equal(t, updatedName, updatedItem.Name)
 }
@@ -70,12 +70,12 @@ func TestDeleteItem(t *testing.T) {
 	repo := gorm.NewItemGormRepository(db)
 
 	item := createTestItem(uuid.New())
-	err := repo.CreateItem(item)
+	err := repo.Create(item)
 	assert.NoError(t, err)
 
-	err = repo.DeleteItem(item.ID)
+	err = repo.Delete(item.ID)
 	assert.NoError(t, err)
 
-	_, err = repo.GetItemByID(item.ID)
+	_, err = repo.FindByID(item.ID)
 	assert.Error(t, err)
 }

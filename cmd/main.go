@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"log"
-	"swapp-go/cmd/internal/adapters/persistence/models"
+	modelsPkg "swapp-go/cmd/internal/adapters/persistence/models"
 	"swapp-go/cmd/internal/config"
 	"swapp-go/cmd/internal/validators"
 )
@@ -29,15 +29,14 @@ func main() {
 }
 
 func migrate() {
-	if err := config.DB.AutoMigrate(&models.UserModel{}); err != nil {
-		log.Fatalf("failed to migrate UserModel: %v", err)
+	models := []interface{}{
+		&modelsPkg.UserModel{},
+		&modelsPkg.PasswordResetModel{},
+		&modelsPkg.ItemModel{},
+		&modelsPkg.SwappRequestModel{},
 	}
 
-	if err := config.DB.AutoMigrate(&models.PasswordResetModel{}); err != nil {
-		log.Fatalf("failed to migrate PasswordResetTokenModel: %v", err)
-	}
-
-	if err := config.DB.AutoMigrate(&models.ItemModel{}); err != nil {
-		log.Fatalf("failed to migrate ItemModel: %v", err)
+	if err := config.DB.AutoMigrate(models...); err != nil {
+		log.Fatalf("failed to migrate models: %v", err)
 	}
 }

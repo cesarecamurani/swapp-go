@@ -6,8 +6,8 @@ import (
 )
 
 type ItemServiceInterface interface {
-	CreateItem(item *domain.Item) error
-	UpdateItem(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error)
-	DeleteItem(id uuid.UUID) error
-	GetItemByID(id uuid.UUID) (*domain.Item, error)
+	Create(item *domain.Item) error
+	Update(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error)
+	Delete(id uuid.UUID) error
+	FindByID(id uuid.UUID) (*domain.Item, error)
 }

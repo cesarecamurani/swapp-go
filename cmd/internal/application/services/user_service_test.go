@@ -27,11 +27,11 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) CreateUser(user *domain.User) error {
+func (m *MockUserRepository) Create(user *domain.User) error {
 	return m.Called(user).Error(0)
 }
 
-func (m *MockUserRepository) UpdateUser(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
+func (m *MockUserRepository) Update(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
 	args := m.Called(id, fields)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -41,11 +41,11 @@ func (m *MockUserRepository) UpdateUser(id uuid.UUID, fields map[string]interfac
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) DeleteUser(id uuid.UUID) error {
+func (m *MockUserRepository) Delete(id uuid.UUID) error {
 	return m.Called(id).Error(0)
 }
 
-func (m *MockUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
+func (m *MockUserRepository) FindByID(id uuid.UUID) (*domain.User, error) {
 	args := m.Called(id)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -55,7 +55,7 @@ func (m *MockUserRepository) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) GetUserByUsername(username string) (*domain.User, error) {
+func (m *MockUserRepository) FindByUsername(username string) (*domain.User, error) {
 	args := m.Called(username)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -65,7 +65,7 @@ func (m *MockUserRepository) GetUserByUsername(username string) (*domain.User, e
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) GetUserByEmail(email string) (*domain.User, error) {
+func (m *MockUserRepository) FindByEmail(email string) (*domain.User, error) {
 	args := m.Called(email)
 
 	if user, ok := args.Get(0).(*domain.User); ok {
@@ -96,9 +96,9 @@ func TestRegisterUser_Success(t *testing.T) {
 		Password: password,
 	}
 
-	mockRepo.On("GetUserByEmail", user.Email).Return(nil, errors.New("not found"))
-	mockRepo.On("GetUserByUsername", user.Username).Return(nil, errors.New("not found"))
-	mockRepo.On("CreateUser", mock.AnythingOfType("*domain.User")).Return(nil)
+	mockRepo.On("FindByEmail", user.Email).Return(nil, errors.New("not found"))
+	mockRepo.On("FindByUsername", user.Username).Return(nil, errors.New("not found"))
+	mockRepo.On("Create", mock.AnythingOfType("*domain.User")).Return(nil)
 
 	err := userService.RegisterUser(user)
 
@@ -117,12 +117,12 @@ func TestRegisterUser_EmailAlreadyExists(t *testing.T) {
 		Password: password,
 	}
 
-	mockRepo.On("GetUserByEmail", user.Email).Return(&domain.User{}, nil)
+	mockRepo.On("FindByEmail", user.Email).Return(&domain.User{}, nil)
 
 	err := userService.RegisterUser(user)
 
 	assert.EqualError(t, err, "email already exists")
-	mockRepo.AssertCalled(t, "GetUserByEmail", user.Email)
+	mockRepo.AssertCalled(t, "FindByEmail", user.Email)
 }
 
 func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
@@ -136,16 +136,16 @@ func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
 		Password: password,
 	}
 
-	mockRepo.On("GetUserByEmail", user.Email).Return(nil, errors.New("not found"))
-	mockRepo.On("GetUserByUsername", user.Username).Return(&domain.User{}, nil)
+	mockRepo.On("FindByEmail", user.Email).Return(nil, errors.New("not found"))
+	mockRepo.On("FindByUsername", user.Username).Return(&domain.User{}, nil)
 
 	err := userService.RegisterUser(user)
 
 	assert.EqualError(t, err, "username not available")
-	mockRepo.AssertCalled(t, "GetUserByUsername", user.Username)
+	mockRepo.AssertCalled(t, "FindByUsername", user.Username)
 }
 
-// UpdateUser
+// Update
 func TestUpdateUser_Success(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	userService := services.NewUserService(mockRepo)
@@ -172,10 +172,10 @@ func TestUpdateUser_Success(t *testing.T) {
 		Address:  &updatedAddress,
 	}
 
-	mockRepo.On("GetUserByID", userID).Return(existingUser, nil)
-	mockRepo.On("UpdateUser", userID, updatedFields).Return(updatedUser, nil)
+	mockRepo.On("FindByID", userID).Return(existingUser, nil)
+	mockRepo.On("Update", userID, updatedFields).Return(updatedUser, nil)
 
-	user, err := userService.UpdateUser(userID, updatedFields)
+	user, err := userService.Update(userID, updatedFields)
 	assert.NoError(t, err)
 	assert.Equal(t, updatedUser.Username, user.Username)
 	assert.Equal(t, updatedUser.Email, user.Email)
@@ -195,14 +195,14 @@ func TestUpdateUser_UpdateFails(t *testing.T) {
 	}
 
 	mockRepo.
-		On("GetUserByID", id).
+		On("FindByID", id).
 		Return(&domain.User{ID: id}, nil)
 
 	mockRepo.
-		On("UpdateUser", id, fields).
+		On("Update", id, fields).
 		Return(nil, errors.New("update error"))
 
-	user, err := userService.UpdateUser(id, fields)
+	user, err := userService.Update(id, fields)
 
 	assert.Error(t, err)
 	assert.Nil(t, user)
@@ -224,9 +224,9 @@ func TestGetUserByID(t *testing.T) {
 		Password: password,
 	}
 
-	mockRepo.On("GetUserByID", userID).Return(expectedUser, nil)
+	mockRepo.On("FindByID", userID).Return(expectedUser, nil)
 
-	result, err := userService.GetUserByID(userID)
+	result, err := userService.FindByID(userID)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUser, result)
@@ -243,9 +243,9 @@ func TestGetUserByEmail(t *testing.T) {
 		Address:  &address,
 		Password: password}
 
-	mockRepo.On("GetUserByEmail", email).Return(expectedUser, nil)
+	mockRepo.On("FindByEmail", email).Return(expectedUser, nil)
 
-	result, err := userService.GetUserByEmail(email)
+	result, err := userService.FindByEmail(email)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUser, result)
@@ -263,23 +263,23 @@ func TestGetUserByUsername(t *testing.T) {
 		Password: password,
 	}
 
-	mockRepo.On("GetUserByUsername", username).Return(expectedUser, nil)
+	mockRepo.On("FindByUsername", username).Return(expectedUser, nil)
 
-	result, err := userService.GetUserByUsername(username)
+	result, err := userService.FindByUsername(username)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUser, result)
 	mockRepo.AssertExpectations(t)
 }
 
-// DeleteUser
+// Delete
 func TestDeleteUser_Success(t *testing.T) {
 	mockRepo, userService := setupTest()
 	userID := uuid.New()
 
-	mockRepo.On("DeleteUser", userID).Return(nil)
+	mockRepo.On("Delete", userID).Return(nil)
 
-	err := userService.DeleteUser(userID)
+	err := userService.Delete(userID)
 	assert.NoError(t, err)
 
 	mockRepo.AssertExpectations(t)
@@ -291,9 +291,9 @@ func TestDeleteUser_Failure(t *testing.T) {
 	userID := uuid.New()
 	expectedErr := errors.New("delete failed")
 
-	mockRepo.On("DeleteUser", userID).Return(expectedErr)
+	mockRepo.On("Delete", userID).Return(expectedErr)
 
-	err := userService.DeleteUser(userID)
+	err := userService.Delete(userID)
 
 	assert.Error(t, err)
 	assert.Equal(t, expectedErr, err)
