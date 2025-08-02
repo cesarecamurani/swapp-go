@@ -74,7 +74,7 @@ func TestCreateItem_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	userID := uuid.New()
 
@@ -97,7 +97,7 @@ func TestCreateItem_Success(t *testing.T) {
 	context.Request = request
 	context.Set("userID", userID.String())
 
-	itemHandler.Create(context)
+	handler.Create(context)
 
 	assert.Equal(t, http.StatusCreated, responseRecorder.Code)
 	assert.Contains(t, responseRecorder.Body.String(), "Item created successfully!")
@@ -106,7 +106,7 @@ func TestCreateItem_Success(t *testing.T) {
 
 func TestCreateItem_InvalidUserID(t *testing.T) {
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	bodyBuffer := &bytes.Buffer{}
 	formWriter := multipart.NewWriter(bodyBuffer)
@@ -122,7 +122,7 @@ func TestCreateItem_InvalidUserID(t *testing.T) {
 	context.Request = request
 	context.Set("userID", "invalid-uuid")
 
-	itemHandler.Create(context)
+	handler.Create(context)
 
 	assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
 	assert.Contains(t, responseRecorder.Body.String(), "Invalid user ID")
@@ -130,7 +130,7 @@ func TestCreateItem_InvalidUserID(t *testing.T) {
 
 func TestUpdateItem_Success(t *testing.T) {
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
 	userID := uuid.New()
@@ -169,7 +169,7 @@ func TestUpdateItem_Success(t *testing.T) {
 	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 	context.Set("userID", userID.String())
 
-	itemHandler.Update(context)
+	handler.Update(context)
 
 	assert.Equal(t, http.StatusOK, responseRecorder.Code)
 	assert.Contains(t, responseRecorder.Body.String(), "Item updated successfully")
@@ -177,7 +177,7 @@ func TestUpdateItem_Success(t *testing.T) {
 
 func TestDeleteItem_Success(t *testing.T) {
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
 	userID := uuid.New()
@@ -197,7 +197,7 @@ func TestDeleteItem_Success(t *testing.T) {
 	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 	context.Set("userID", userID.String())
 
-	itemHandler.Delete(context)
+	handler.Delete(context)
 
 	assert.Equal(t, http.StatusOK, responseRecorder.Code)
 	assert.Contains(t, responseRecorder.Body.String(), "Item deleted successfully!")
@@ -205,7 +205,7 @@ func TestDeleteItem_Success(t *testing.T) {
 
 func TestDeleteItem_Unauthorized(t *testing.T) {
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
 	itemOwnerID := uuid.New()
@@ -225,7 +225,7 @@ func TestDeleteItem_Unauthorized(t *testing.T) {
 	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 	context.Set("userID", requestUserID.String())
 
-	itemHandler.Delete(context)
+	handler.Delete(context)
 
 	assert.Equal(t, http.StatusUnauthorized, responseRecorder.Code)
 	assert.Contains(t, responseRecorder.Body.String(), "doesn't belong to you")
@@ -233,7 +233,7 @@ func TestDeleteItem_Unauthorized(t *testing.T) {
 
 func TestGetItemByID_Success(t *testing.T) {
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
 	userID := uuid.New()
@@ -253,7 +253,7 @@ func TestGetItemByID_Success(t *testing.T) {
 	context.Request = request
 	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 
-	itemHandler.FindByID(context)
+	handler.FindByID(context)
 
 	assert.Equal(t, http.StatusOK, responseRecorder.Code)
 	assert.Contains(t, responseRecorder.Body.String(), itemID.String())
@@ -261,7 +261,7 @@ func TestGetItemByID_Success(t *testing.T) {
 
 func TestGetItemByID_NotFound(t *testing.T) {
 	mockService := new(MockItemService)
-	itemHandler := handlers.NewItemHandler(mockService)
+	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
 	mockService.On("FindByID", itemID).Return(nil, errors.New("not found"))
@@ -272,7 +272,7 @@ func TestGetItemByID_NotFound(t *testing.T) {
 	context.Request = request
 	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 
-	itemHandler.FindByID(context)
+	handler.FindByID(context)
 
 	assert.Equal(t, http.StatusNotFound, responseRecorder.Code)
 }

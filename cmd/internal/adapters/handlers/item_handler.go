@@ -31,7 +31,7 @@ type ItemSuccessResponse struct {
 	Item    *ItemResponse `json:"item"`
 }
 
-func (itemHandler *ItemHandler) Create(context *gin.Context) {
+func (handler *ItemHandler) Create(context *gin.Context) {
 	userID := context.GetString("userID")
 	parsedUserID, err := uuid.Parse(userID)
 	if err != nil {
@@ -54,7 +54,7 @@ func (itemHandler *ItemHandler) Create(context *gin.Context) {
 		UserID:      parsedUserID,
 	}
 
-	if err = itemHandler.itemService.Create(item); err != nil {
+	if err = handler.itemService.Create(item); err != nil {
 		responses.BadRequest(context, "Item creation failed", err)
 		return
 	}
@@ -62,8 +62,8 @@ func (itemHandler *ItemHandler) Create(context *gin.Context) {
 	respondWithItem(context, http.StatusCreated, "Item created successfully!", item)
 }
 
-func (itemHandler *ItemHandler) Update(context *gin.Context) {
-	item, ok := itemHandler.verifyItemOwnership(context)
+func (handler *ItemHandler) Update(context *gin.Context) {
+	item, ok := handler.verifyItemOwnership(context)
 	if !ok {
 		return
 	}
@@ -88,7 +88,7 @@ func (itemHandler *ItemHandler) Update(context *gin.Context) {
 		return
 	}
 
-	updatedItem, err := itemHandler.itemService.Update(item.ID, updateData)
+	updatedItem, err := handler.itemService.Update(item.ID, updateData)
 	if err != nil {
 		responses.InternalServerError(context, "Failed to update item", err)
 		return
@@ -97,13 +97,13 @@ func (itemHandler *ItemHandler) Update(context *gin.Context) {
 	respondWithItem(context, http.StatusOK, "Item updated successfully!", updatedItem)
 }
 
-func (itemHandler *ItemHandler) Delete(context *gin.Context) {
-	item, ok := itemHandler.verifyItemOwnership(context)
+func (handler *ItemHandler) Delete(context *gin.Context) {
+	item, ok := handler.verifyItemOwnership(context)
 	if !ok {
 		return
 	}
 
-	if err := itemHandler.itemService.Delete(item.ID); err != nil {
+	if err := handler.itemService.Delete(item.ID); err != nil {
 		responses.BadRequest(context, "Failed to delete item", err)
 		return
 	}
@@ -111,7 +111,7 @@ func (itemHandler *ItemHandler) Delete(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"message": "Item deleted successfully!"})
 }
 
-func (itemHandler *ItemHandler) FindByID(context *gin.Context) {
+func (handler *ItemHandler) FindByID(context *gin.Context) {
 	itemID := context.Param("id")
 
 	parsedID, err := uuid.Parse(itemID)
@@ -120,7 +120,7 @@ func (itemHandler *ItemHandler) FindByID(context *gin.Context) {
 		return
 	}
 
-	item, err := itemHandler.itemService.FindByID(parsedID)
+	item, err := handler.itemService.FindByID(parsedID)
 	if err != nil {
 		responses.NotFound(context, "Item not found", err)
 		return
@@ -152,7 +152,7 @@ func respondWithItem(context *gin.Context, status int, message string, item *dom
 	context.JSON(status, response)
 }
 
-func (itemHandler *ItemHandler) verifyItemOwnership(context *gin.Context) (*domain.Item, bool) {
+func (handler *ItemHandler) verifyItemOwnership(context *gin.Context) (*domain.Item, bool) {
 	itemID := context.Param("id")
 	userID := context.GetString("userID")
 
@@ -172,7 +172,7 @@ func (itemHandler *ItemHandler) verifyItemOwnership(context *gin.Context) (*doma
 		return nil, false
 	}
 
-	item, err := itemHandler.itemService.FindByID(parsedID)
+	item, err := handler.itemService.FindByID(parsedID)
 	if err != nil {
 		responses.NotFound(context, "Item not found", err)
 		return nil, false

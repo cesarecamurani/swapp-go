@@ -1,0 +1,7 @@
+PATCH localhost:9000/swap-requests/update-status/:id
+Content-Type: application/json
+Authorization: Bearer
+
+{
+  "status": ""
+}

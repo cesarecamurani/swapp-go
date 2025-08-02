@@ -33,7 +33,7 @@ func migrate() {
 		&modelsPkg.UserModel{},
 		&modelsPkg.PasswordResetModel{},
 		&modelsPkg.ItemModel{},
-		&modelsPkg.SwappRequestModel{},
+		&modelsPkg.SwapRequestModel{},
 	}
 
 	if err := config.DB.AutoMigrate(models...); err != nil {

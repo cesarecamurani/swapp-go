@@ -60,7 +60,7 @@ type LoginUserResponse struct {
 	Token    string  `json:"token"`
 }
 
-func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
+func (handler *UserHandler) RegisterUser(context *gin.Context) {
 	var request RegisterUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
@@ -76,7 +76,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 		Address:  request.Address,
 	}
 
-	if err := userHandler.userService.RegisterUser(user); err != nil {
+	if err := handler.userService.RegisterUser(user); err != nil {
 		responses.BadRequest(context, "Invalid request", err)
 		return
 	}
@@ -84,7 +84,7 @@ func (userHandler *UserHandler) RegisterUser(context *gin.Context) {
 	respondWithUser(context, http.StatusCreated, "User created successfully!", user)
 }
 
-func (userHandler *UserHandler) Update(context *gin.Context) {
+func (handler *UserHandler) Update(context *gin.Context) {
 	userID := context.GetString("userID")
 
 	var request UpdateUserRequest
@@ -123,7 +123,7 @@ func (userHandler *UserHandler) Update(context *gin.Context) {
 		return
 	}
 
-	updatedUser, err := userHandler.userService.Update(parsedID, updateData)
+	updatedUser, err := handler.userService.Update(parsedID, updateData)
 	if err != nil {
 		responses.InternalServerError(context, "Failed to update user", err)
 		return
@@ -132,7 +132,7 @@ func (userHandler *UserHandler) Update(context *gin.Context) {
 	respondWithUser(context, http.StatusOK, "User updated successfully!", updatedUser)
 }
 
-func (userHandler *UserHandler) Delete(context *gin.Context) {
+func (handler *UserHandler) Delete(context *gin.Context) {
 	userID := context.GetString("userID")
 
 	parsedID, err := uuid.Parse(userID)
@@ -141,7 +141,7 @@ func (userHandler *UserHandler) Delete(context *gin.Context) {
 		return
 	}
 
-	if err = userHandler.userService.Delete(parsedID); err != nil {
+	if err = handler.userService.Delete(parsedID); err != nil {
 		responses.InternalServerError(context, "Failed to delete user", err)
 		return
 	}
@@ -149,7 +149,7 @@ func (userHandler *UserHandler) Delete(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"message": "User deleted successfully!"})
 }
 
-func (userHandler *UserHandler) FindByID(context *gin.Context) {
+func (handler *UserHandler) FindByID(context *gin.Context) {
 	id := context.Param("id")
 
 	userID, err := uuid.Parse(id)
@@ -158,7 +158,7 @@ func (userHandler *UserHandler) FindByID(context *gin.Context) {
 		return
 	}
 
-	user, err := userHandler.userService.FindByID(userID)
+	user, err := handler.userService.FindByID(userID)
 	if err != nil {
 		responses.NotFound(context, "User not found", err)
 		return
@@ -175,7 +175,7 @@ func (userHandler *UserHandler) FindByID(context *gin.Context) {
 	context.JSON(http.StatusOK, response)
 }
 
-func (userHandler *UserHandler) LoginUser(context *gin.Context) {
+func (handler *UserHandler) LoginUser(context *gin.Context) {
 	var request LoginUserRequest
 
 	if err := context.ShouldBindJSON(&request); err != nil {
@@ -183,7 +183,7 @@ func (userHandler *UserHandler) LoginUser(context *gin.Context) {
 		return
 	}
 
-	token, user, err := userHandler.userService.Authenticate(request.Username, request.Password)
+	token, user, err := handler.userService.Authenticate(request.Username, request.Password)
 	if err != nil {
 		responses.Unauthorized(context, "Unauthorized", err)
 		return

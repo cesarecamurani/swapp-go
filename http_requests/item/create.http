@@ -5,16 +5,16 @@ Content-Type: multipart/form-data; boundary=WebAppBoundary
 --WebAppBoundary
 Content-Disposition: form-data; name="name"
 
-Name
+Name of the item
 
 --WebAppBoundary
 Content-Disposition: form-data; name="description"
 
-Description
+Description of the item
 
 --WebAppBoundary
 Content-Disposition: form-data; name="picture"; filename="image.jpg"
 Content-Type: image/jpeg
 
-< path/to/image.jpg
+< binary image data >
 --WebAppBoundary--

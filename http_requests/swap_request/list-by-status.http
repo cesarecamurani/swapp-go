@@ -1,0 +1,2 @@
+GET localhost:9000/swap-requests/list-by-status/:status
+Authorization: Bearer
