@@ -78,3 +78,18 @@ func (itemGorm *ItemGormRepository) FindByID(id uuid.UUID) (*domain.Item, error)
 
 	return toDomainItem(&itemModel), nil
 }
+
+func (itemGorm *ItemGormRepository) TryMarkItemAsOffered(itemID uuid.UUID) (bool, error) {
+	result := itemGorm.db.Model(&domain.Item{}).
+		Where("id = ? AND offered = ?", itemID, false).
+		Update("offered", true)
+
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+
+	return true, nil
+}

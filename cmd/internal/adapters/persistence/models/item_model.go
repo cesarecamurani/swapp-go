@@ -11,6 +11,7 @@ type ItemModel struct {
 	Description string    `gorm:"not null"`
 	PictureURL  string    `gorm:"not null"`
 	UserID      uuid.UUID
+	Offered     bool `gorm:"default:false"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

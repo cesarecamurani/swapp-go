@@ -22,25 +22,25 @@ func toSwapRequestModel(swapRequest *domain.SwapRequest) *models.SwapRequestMode
 	}
 
 	return &models.SwapRequestModel{
-		ID:                   id,
-		Status:               models.SwapRequestStatus(swapRequest.Status),
-		ReferenceNumber:      swapRequest.ReferenceNumber,
-		OfferedItemID:        swapRequest.OfferedItemID,
-		RequestedItemID:      swapRequest.RequestedItemID,
-		OfferedItemOwnerID:   swapRequest.OfferedItemOwnerID,
-		RequestedItemOwnerID: swapRequest.RequestedItemOwnerID,
+		ID:              id,
+		Status:          models.SwapRequestStatus(swapRequest.Status),
+		ReferenceNumber: swapRequest.ReferenceNumber,
+		OfferedItemID:   swapRequest.OfferedItemID,
+		RequestedItemID: swapRequest.RequestedItemID,
+		SenderID:        swapRequest.SenderID,
+		RecipientID:     swapRequest.RecipientID,
 	}
 }
 
 func toDomainSwapRequest(model *models.SwapRequestModel) *domain.SwapRequest {
 	return &domain.SwapRequest{
-		ID:                   model.ID,
-		Status:               domain.SwapRequestStatus(model.Status),
-		ReferenceNumber:      model.ReferenceNumber,
-		OfferedItemID:        model.OfferedItemID,
-		RequestedItemID:      model.RequestedItemID,
-		OfferedItemOwnerID:   model.OfferedItemOwnerID,
-		RequestedItemOwnerID: model.RequestedItemOwnerID,
+		ID:              model.ID,
+		Status:          domain.SwapRequestStatus(model.Status),
+		ReferenceNumber: model.ReferenceNumber,
+		OfferedItemID:   model.OfferedItemID,
+		RequestedItemID: model.RequestedItemID,
+		SenderID:        model.SenderID,
+		RecipientID:     model.RecipientID,
 	}
 }
 
@@ -75,7 +75,7 @@ func (swapRequestGorm *SwapRequestGormRepository) FindByReferenceNumber(referenc
 func (swapRequestGorm *SwapRequestGormRepository) ListByUser(userID uuid.UUID) ([]domain.SwapRequest, error) {
 	var modelsList []models.SwapRequestModel
 	if err := swapRequestGorm.db.Where(
-		"offered_item_owner_id = ? OR requested_item_owner_id = ?", userID, userID,
+		"sender_id = ? OR recipient_id = ?", userID, userID,
 	).Find(&modelsList).Error; err != nil {
 		return nil, err
 	}

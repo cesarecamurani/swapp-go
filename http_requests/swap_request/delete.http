@@ -1,2 +1,2 @@
-DELETE localhost:9000/swap-requests/delete/:id
-Authorization: Bearer
+DELETE localhost:9000/swap-requests/delete/2cc0f4fe-1d04-4215-bb07-a6a0655a4f4c
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphY2tzbWl0aEBnbWFpbC5jb20iLCJleHAiOjE3NTQyOTgzNTIsInN1YiI6IjIwM2U1OGZjLTgxODktNGVhMy1iOGQ2LTI2MzBiMDJiYWY1NCJ9.VVM5YWV9faywkd7cBnuj6xrIKV70VRM4weDKHah3zNM

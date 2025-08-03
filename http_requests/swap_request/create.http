@@ -1,9 +1,9 @@
 POST localhost:9000/swap-requests/create
 Content-Type: application/json
-Authorization: Bearer
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphY2tzbWl0aEBnbWFpbC5jb20iLCJleHAiOjE3NTQyOTgzNTIsInN1YiI6IjIwM2U1OGZjLTgxODktNGVhMy1iOGQ2LTI2MzBiMDJiYWY1NCJ9.VVM5YWV9faywkd7cBnuj6xrIKV70VRM4weDKHah3zNM
 
 {
-  "offered_item_id": "",
-  "requested_item_id": "",
-  "requested_item_owner_id": ""
+  "offered_item_id": "a9744c90-fcb0-424c-97c0-ab2a14f1314b",
+  "requested_item_id": "def15a52-8b4e-4be5-a089-6ffed0eea0e0",
+  "requested_item_owner_id": "9acc5902-5008-41b2-aeb7-fe899a9e34d5"
 }

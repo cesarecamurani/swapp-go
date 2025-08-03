@@ -19,14 +19,18 @@ func BadRequest(context *gin.Context, message string, err error) {
 	HTTPStatus(context, http.StatusBadRequest, message, err)
 }
 
-func InternalServerError(context *gin.Context, message string, err error) {
-	HTTPStatus(context, http.StatusInternalServerError, message, err)
-}
-
 func Unauthorized(context *gin.Context, message string, err error) {
 	HTTPStatus(context, http.StatusUnauthorized, message, err)
 }
 
 func NotFound(context *gin.Context, message string, err error) {
 	HTTPStatus(context, http.StatusNotFound, message, err)
+}
+
+func Conflict(context *gin.Context, message string, err error) {
+	HTTPStatus(context, http.StatusConflict, message, err)
+}
+
+func InternalServerError(context *gin.Context, message string, err error) {
+	HTTPStatus(context, http.StatusInternalServerError, message, err)
 }

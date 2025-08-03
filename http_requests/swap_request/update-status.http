@@ -1,7 +1,7 @@
-PATCH localhost:9000/swap-requests/update-status/:id
+PATCH localhost:9000/swap-requests/update-status/362783df-31be-4193-8c25-7b2eaf99cb67
 Content-Type: application/json
-Authorization: Bearer
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImphY2tzbWl0aEBnbWFpbC5jb20iLCJleHAiOjE3NTQyOTgzNTIsInN1YiI6IjIwM2U1OGZjLTgxODktNGVhMy1iOGQ2LTI2MzBiMDJiYWY1NCJ9.VVM5YWV9faywkd7cBnuj6xrIKV70VRM4weDKHah3zNM
 
 {
-  "status": ""
+  "status": "accepted"
 }

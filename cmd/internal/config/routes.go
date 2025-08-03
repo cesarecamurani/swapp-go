@@ -24,7 +24,7 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 	itemHandler := handlers.NewItemHandler(itemService)
 
 	swapRequestRepo := gormRepo.NewSwapRequestGormRepository(db)
-	swapRequestService := services.NewSwapRequestService(swapRequestRepo)
+	swapRequestService := services.NewSwapRequestService(swapRequestRepo, itemRepo)
 	swapRequestHandler := handlers.NewSwapRequestHandler(swapRequestService)
 
 	// Public routes

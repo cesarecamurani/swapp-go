@@ -10,4 +10,5 @@ type ItemRepository interface {
 	Update(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error)
 	Delete(id uuid.UUID) error
 	FindByID(id uuid.UUID) (*domain.Item, error)
+	TryMarkItemAsOffered(itemID uuid.UUID) (bool, error)
 }

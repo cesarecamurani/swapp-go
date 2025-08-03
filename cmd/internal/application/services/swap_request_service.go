@@ -1,21 +1,52 @@
 package services
 
 import (
+	"errors"
 	"github.com/google/uuid"
 	"swapp-go/cmd/internal/application/ports"
 	"swapp-go/cmd/internal/domain"
 )
 
+var ItemAlreadyOfferedErr = errors.New("item is already out for offer")
+
 type SwapRequestService struct {
-	repo ports.SwapRequestRepository
+	repo     ports.SwapRequestRepository
+	itemRepo ports.ItemRepository
 }
 
-func NewSwapRequestService(repo ports.SwapRequestRepository) *SwapRequestService {
-	return &SwapRequestService{repo: repo}
+func NewSwapRequestService(repo ports.SwapRequestRepository, itemRepo ports.ItemRepository) *SwapRequestService {
+	return &SwapRequestService{
+		repo:     repo,
+		itemRepo: itemRepo,
+	}
 }
 
 func (service *SwapRequestService) Create(request *domain.SwapRequest) error {
-	return service.repo.Create(request)
+	offeredItemID := request.OfferedItemID
+
+	item, err := service.itemRepo.FindByID(offeredItemID)
+	if err != nil {
+		return errors.New("offered item not found")
+	}
+
+	success, err := service.itemRepo.TryMarkItemAsOffered(item.ID)
+	if err != nil {
+		return err
+	}
+	if !success {
+		return ItemAlreadyOfferedErr
+	}
+
+	if err = service.setItemOfferedStatus(item.ID, true); err != nil {
+		return errors.New("failed to mark item as offered")
+	}
+
+	if err = service.repo.Create(request); err != nil {
+		_ = service.setItemOfferedStatus(item.ID, false)
+		return err
+	}
+
+	return nil
 }
 
 func (service *SwapRequestService) FindByID(id uuid.UUID) (*domain.SwapRequest, error) {
@@ -35,9 +66,39 @@ func (service *SwapRequestService) ListByStatus(status domain.SwapRequestStatus)
 }
 
 func (service *SwapRequestService) UpdateStatus(id uuid.UUID, status domain.SwapRequestStatus) error {
-	return service.repo.UpdateStatus(id, status)
+	swapRequest, err := service.repo.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	if err = service.repo.UpdateStatus(id, status); err != nil {
+		return err
+	}
+
+	if status == domain.StatusRejected || status == domain.StatusCancelled {
+		return service.setItemOfferedStatus(swapRequest.OfferedItemID, false)
+	}
+	
+	return nil
 }
 
 func (service *SwapRequestService) Delete(id uuid.UUID) error {
-	return service.repo.Delete(id)
+	swapRequest, err := service.repo.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	if err = service.repo.Delete(id); err != nil {
+		return err
+	}
+
+	return service.setItemOfferedStatus(swapRequest.OfferedItemID, false)
+}
+
+func (service *SwapRequestService) setItemOfferedStatus(itemID uuid.UUID, offered bool) error {
+	_, err := service.itemRepo.Update(itemID, map[string]interface{}{
+		"offered": offered,
+	})
+
+	return err
 }

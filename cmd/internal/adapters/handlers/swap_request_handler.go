@@ -22,19 +22,19 @@ func NewSwapRequestHandler(swapRequestService services.SwapRequestServiceInterfa
 }
 
 type SwapRequestRequest struct {
-	OfferedItemID        uuid.UUID `json:"offered_item_id" binding:"required"`
-	RequestedItemID      uuid.UUID `json:"requested_item_id" binding:"required"`
-	RequestedItemOwnerID uuid.UUID `json:"requested_item_owner_id" binding:"required"`
+	OfferedItemID   uuid.UUID `json:"offered_item_id" binding:"required"`
+	RequestedItemID uuid.UUID `json:"requested_item_id" binding:"required"`
+	RecipientID     uuid.UUID `json:"recipient_id" binding:"required"`
 }
 
 type SwapRequestResponse struct {
-	ID                   string `json:"id"`
-	Status               string `json:"status"`
-	ReferenceNumber      string `json:"reference_number"`
-	OfferedItemID        string `json:"offered_item_id"`
-	RequestedItemID      string `json:"requested_item_id"`
-	OfferedItemOwnerID   string `json:"offered_item_owner_id"`
-	RequestedItemOwnerID string `json:"requested_item_owner_id"`
+	ID              string `json:"id"`
+	Status          string `json:"status"`
+	ReferenceNumber string `json:"reference_number"`
+	OfferedItemID   string `json:"offered_item_id"`
+	RequestedItemID string `json:"requested_item_id"`
+	SenderID        string `json:""`
+	RecipientID     string `json:"recipient_id"`
 }
 
 type SwapRequestSuccessResponse struct {
@@ -67,16 +67,21 @@ func (handler *SwapRequestHandler) Create(context *gin.Context) {
 	}
 
 	swapRequest := &domain.SwapRequest{
-		Status:               domain.StatusPending,
-		ReferenceNumber:      referenceNumber,
-		OfferedItemID:        requestInput.OfferedItemID,
-		RequestedItemID:      requestInput.RequestedItemID,
-		OfferedItemOwnerID:   userID,
-		RequestedItemOwnerID: requestInput.RequestedItemOwnerID,
+		Status:          domain.StatusPending,
+		ReferenceNumber: referenceNumber,
+		OfferedItemID:   requestInput.OfferedItemID,
+		RequestedItemID: requestInput.RequestedItemID,
+		SenderID:        userID,
+		RecipientID:     requestInput.RecipientID,
 	}
 
-	if err = handler.swapRequestService.Create(swapRequest); err != nil {
-		responses.InternalServerError(context, "Failed to create swapp request", err)
+	err = handler.swapRequestService.Create(swapRequest)
+	if err != nil {
+		if errors.Is(err, services.ItemAlreadyOfferedErr) {
+			responses.Conflict(context, "Item is already offered in another swap request", err)
+			return
+		}
+		responses.InternalServerError(context, "Failed to create swap request", err)
 		return
 	}
 
@@ -102,7 +107,7 @@ func (handler *SwapRequestHandler) FindByID(context *gin.Context) {
 		return
 	}
 
-	if swapRequest.OfferedItemOwnerID != userID && swapRequest.RequestedItemOwnerID != userID {
+	if swapRequest.SenderID != userID && swapRequest.RecipientID != userID {
 		responses.Unauthorized(context, "You are not part of this swap request", nil)
 		return
 	}
@@ -129,7 +134,7 @@ func (handler *SwapRequestHandler) FindByReferenceNumber(context *gin.Context) {
 		return
 	}
 
-	if swapRequest.OfferedItemOwnerID != userID && swapRequest.RequestedItemOwnerID != userID {
+	if swapRequest.SenderID != userID && swapRequest.RecipientID != userID {
 		responses.Unauthorized(context, "You are not authorized to view this swap request", nil)
 		return
 	}
@@ -156,7 +161,7 @@ func (handler *SwapRequestHandler) Delete(context *gin.Context) {
 		return
 	}
 
-	if swapRequest.OfferedItemOwnerID != userID {
+	if swapRequest.SenderID != userID {
 		responses.Unauthorized(context, "Only the sender can delete this request", nil)
 		return
 	}
@@ -196,12 +201,12 @@ func (handler *SwapRequestHandler) UpdateStatus(context *gin.Context) {
 		return
 	}
 
-	if swapRequest.OfferedItemOwnerID != userID && body.Status == "cancelled" {
+	if swapRequest.SenderID != userID && body.Status == "cancelled" {
 		responses.Unauthorized(context, "Only the sender can cancel this request", nil)
 		return
 	}
 
-	if swapRequest.RequestedItemOwnerID != userID && body.Status != "cancelled" {
+	if swapRequest.RecipientID != userID && body.Status != "cancelled" {
 		responses.Unauthorized(context, "Only the recipient can accept or reject a request", nil)
 		return
 	}
@@ -253,7 +258,7 @@ func (handler *SwapRequestHandler) ListByStatus(context *gin.Context) {
 
 	filtered := make([]domain.SwapRequest, 0)
 	for _, request := range swapRequests {
-		if request.OfferedItemOwnerID == userID || request.RequestedItemOwnerID == userID {
+		if request.SenderID == userID || request.RecipientID == userID {
 			filtered = append(filtered, request)
 		}
 	}
@@ -275,13 +280,13 @@ func respondWithSwapRequest(context *gin.Context, status int, message string, sw
 	response := SwapRequestSuccessResponse{
 		Message: message,
 		SwapRequest: &SwapRequestResponse{
-			ID:                   swapRequest.ID.String(),
-			Status:               string(swapRequest.Status),
-			ReferenceNumber:      swapRequest.ReferenceNumber,
-			OfferedItemID:        swapRequest.OfferedItemID.String(),
-			RequestedItemID:      swapRequest.RequestedItemID.String(),
-			OfferedItemOwnerID:   swapRequest.OfferedItemOwnerID.String(),
-			RequestedItemOwnerID: swapRequest.RequestedItemOwnerID.String(),
+			ID:              swapRequest.ID.String(),
+			Status:          string(swapRequest.Status),
+			ReferenceNumber: swapRequest.ReferenceNumber,
+			OfferedItemID:   swapRequest.OfferedItemID.String(),
+			RequestedItemID: swapRequest.RequestedItemID.String(),
+			SenderID:        swapRequest.SenderID.String(),
+			RecipientID:     swapRequest.RecipientID.String(),
 		},
 	}
 
@@ -293,13 +298,13 @@ func respondWithSwapRequestList(context *gin.Context, status int, message string
 
 	for _, request := range swapRequests {
 		responseList = append(responseList, SwapRequestResponse{
-			ID:                   request.ID.String(),
-			Status:               string(request.Status),
-			ReferenceNumber:      request.ReferenceNumber,
-			OfferedItemID:        request.OfferedItemID.String(),
-			RequestedItemID:      request.RequestedItemID.String(),
-			OfferedItemOwnerID:   request.OfferedItemOwnerID.String(),
-			RequestedItemOwnerID: request.RequestedItemOwnerID.String(),
+			ID:              request.ID.String(),
+			Status:          string(request.Status),
+			ReferenceNumber: request.ReferenceNumber,
+			OfferedItemID:   request.OfferedItemID.String(),
+			RequestedItemID: request.RequestedItemID.String(),
+			SenderID:        request.SenderID.String(),
+			RecipientID:     request.RecipientID.String(),
 		})
 	}
 

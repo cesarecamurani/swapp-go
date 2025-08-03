@@ -10,4 +10,5 @@ type Item struct {
 	Description string
 	PictureURL  string
 	UserID      uuid.UUID
+	Offered     bool
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"swapp-go/cmd/internal/application/services"
+	"swapp-go/cmd/internal/application/services/mocks"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )
@@ -22,69 +23,15 @@ var (
 	updatedAddress  = "2, Main Street"
 )
 
-// Mocks
-type MockUserRepository struct {
-	mock.Mock
-}
-
-func (m *MockUserRepository) Create(user *domain.User) error {
-	return m.Called(user).Error(0)
-}
-
-func (m *MockUserRepository) Update(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
-	args := m.Called(id, fields)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserRepository) Delete(id uuid.UUID) error {
-	return m.Called(id).Error(0)
-}
-
-func (m *MockUserRepository) FindByID(id uuid.UUID) (*domain.User, error) {
-	args := m.Called(id)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserRepository) FindByUsername(username string) (*domain.User, error) {
-	args := m.Called(username)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserRepository) FindByEmail(email string) (*domain.User, error) {
-	args := m.Called(email)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
 // Test Helpers
-func setupTest() (*MockUserRepository, *services.UserService) {
-	mockRepo := new(MockUserRepository)
+func setupTest() (*mocks.MockUserRepository, *services.UserService) {
+	mockRepo := new(mocks.MockUserRepository)
 	userService := services.NewUserService(mockRepo)
 
 	return mockRepo, userService
 }
 
 // Tests
-// RegisterUser
 func TestRegisterUser_Success(t *testing.T) {
 	mockRepo, userService := setupTest()
 
@@ -145,10 +92,8 @@ func TestRegisterUser_UsernameAlreadyExists(t *testing.T) {
 	mockRepo.AssertCalled(t, "FindByUsername", user.Username)
 }
 
-// Update
 func TestUpdateUser_Success(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	userService := services.NewUserService(mockRepo)
+	mockRepo, userService := setupTest()
 
 	userID := uuid.New()
 	existingUser := &domain.User{
@@ -186,8 +131,7 @@ func TestUpdateUser_Success(t *testing.T) {
 }
 
 func TestUpdateUser_UpdateFails(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	userService := services.NewUserService(mockRepo)
+	mockRepo, userService := setupTest()
 
 	id := uuid.New()
 	fields := map[string]interface{}{
@@ -210,7 +154,6 @@ func TestUpdateUser_UpdateFails(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-// GetUserBy (ID|Email|Username)
 func TestGetUserByID(t *testing.T) {
 	mockRepo, userService := setupTest()
 
@@ -272,7 +215,6 @@ func TestGetUserByUsername(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-// Delete
 func TestDeleteUser_Success(t *testing.T) {
 	mockRepo, userService := setupTest()
 	userID := uuid.New()

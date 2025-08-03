@@ -4,34 +4,11 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"swapp-go/cmd/internal/application/services"
+	"swapp-go/cmd/internal/application/services/mocks"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )
-
-// Mocks
-type MockItemRepository struct {
-	mock.Mock
-}
-
-func (m *MockItemRepository) Create(item *domain.Item) error {
-	return m.Called(item).Error(0)
-}
-
-func (m *MockItemRepository) Update(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error) {
-	args := m.Called(id, fields)
-	return args.Get(0).(*domain.Item), args.Error(1)
-}
-
-func (m *MockItemRepository) Delete(id uuid.UUID) error {
-	return m.Called(id).Error(0)
-}
-
-func (m *MockItemRepository) FindByID(id uuid.UUID) (*domain.Item, error) {
-	args := m.Called(id)
-	return args.Get(0).(*domain.Item), args.Error(1)
-}
 
 // Test helpers
 func Item(id uuid.UUID) *domain.Item {
@@ -46,7 +23,7 @@ func Item(id uuid.UUID) *domain.Item {
 
 // Tests
 func TestCreateItem_Success(t *testing.T) {
-	mockRepo := new(MockItemRepository)
+	mockRepo := new(mocks.ItemRepository)
 	service := services.NewItemService(mockRepo)
 
 	item := Item(uuid.New())
@@ -58,7 +35,7 @@ func TestCreateItem_Success(t *testing.T) {
 }
 
 func TestUpdateItem_Success(t *testing.T) {
-	mockRepo := new(MockItemRepository)
+	mockRepo := new(mocks.ItemRepository)
 	service := services.NewItemService(mockRepo)
 
 	itemID := uuid.New()
@@ -76,7 +53,7 @@ func TestUpdateItem_Success(t *testing.T) {
 }
 
 func TestUpdateItem_NotFound(t *testing.T) {
-	mockRepo := new(MockItemRepository)
+	mockRepo := new(mocks.ItemRepository)
 	service := services.NewItemService(mockRepo)
 
 	itemID := uuid.New()
@@ -94,7 +71,7 @@ func TestUpdateItem_NotFound(t *testing.T) {
 }
 
 func TestDeleteItem_Success(t *testing.T) {
-	mockRepo := new(MockItemRepository)
+	mockRepo := new(mocks.ItemRepository)
 	service := services.NewItemService(mockRepo)
 
 	itemID := uuid.New()
@@ -106,7 +83,7 @@ func TestDeleteItem_Success(t *testing.T) {
 }
 
 func TestGetItemByID_Success(t *testing.T) {
-	mockRepo := new(MockItemRepository)
+	mockRepo := new(mocks.ItemRepository)
 	service := services.NewItemService(mockRepo)
 
 	itemID := uuid.New()

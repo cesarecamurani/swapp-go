@@ -12,11 +12,11 @@ const (
 )
 
 type SwapRequest struct {
-	ID                   uuid.UUID
-	Status               SwapRequestStatus
-	ReferenceNumber      string
-	OfferedItemID        uuid.UUID
-	RequestedItemID      uuid.UUID
-	OfferedItemOwnerID   uuid.UUID
-	RequestedItemOwnerID uuid.UUID
+	ID              uuid.UUID
+	Status          SwapRequestStatus
+	ReferenceNumber string
+	OfferedItemID   uuid.UUID
+	RequestedItemID uuid.UUID
+	SenderID        uuid.UUID
+	RecipientID     uuid.UUID
 }
