@@ -47,6 +47,13 @@ type SwapRequestListResponse struct {
 	SwapRequests []SwapRequestResponse `json:"swapRequests"`
 }
 
+var validStatuses = map[domain.SwapRequestStatus]bool{
+	domain.StatusPending:   true,
+	domain.StatusAccepted:  true,
+	domain.StatusRejected:  true,
+	domain.StatusCancelled: true,
+}
+
 func (handler *SwapRequestHandler) Create(context *gin.Context) {
 	var requestInput SwapRequestRequest
 
@@ -195,18 +202,23 @@ func (handler *SwapRequestHandler) UpdateStatus(context *gin.Context) {
 		return
 	}
 
+	if !validStatuses[body.Status] {
+		responses.BadRequest(context, "Invalid status value", nil)
+		return
+	}
+
 	swapRequest, err := handler.swapRequestService.FindByID(requestID)
 	if err != nil {
 		responses.NotFound(context, "Swap request not found", err)
 		return
 	}
 
-	if swapRequest.SenderID != userID && body.Status == "cancelled" {
+	if body.Status == domain.StatusCancelled && swapRequest.SenderID != userID {
 		responses.Unauthorized(context, "Only the sender can cancel this request", nil)
 		return
 	}
 
-	if swapRequest.RecipientID != userID && body.Status != "cancelled" {
+	if (body.Status == domain.StatusAccepted || body.Status == domain.StatusRejected) && swapRequest.RecipientID != userID {
 		responses.Unauthorized(context, "Only the recipient can accept or reject a request", nil)
 		return
 	}
@@ -249,6 +261,11 @@ func (handler *SwapRequestHandler) ListByStatus(context *gin.Context) {
 	}
 
 	status := domain.SwapRequestStatus(statusParam)
+
+	if !validStatuses[status] {
+		responses.BadRequest(context, "Invalid status parameter", nil)
+		return
+	}
 
 	swapRequests, err := handler.swapRequestService.ListByStatus(status)
 	if err != nil {

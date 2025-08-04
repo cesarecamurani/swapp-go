@@ -12,37 +12,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"swapp-go/cmd/internal/adapters/handlers"
+	"swapp-go/cmd/internal/adapters/handlers/mocks"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )
-
-// Mocks
-type MockItemService struct {
-	mock.Mock
-}
-
-func (m *MockItemService) Create(item *domain.Item) error {
-	return m.Called(item).Error(0)
-}
-
-func (m *MockItemService) Update(id uuid.UUID, fields map[string]interface{}) (*domain.Item, error) {
-	args := m.Called(id, fields)
-	return args.Get(0).(*domain.Item), args.Error(1)
-}
-
-func (m *MockItemService) Delete(id uuid.UUID) error {
-	return m.Called(id).Error(0)
-}
-
-func (m *MockItemService) FindByID(id uuid.UUID) (*domain.Item, error) {
-	args := m.Called(id)
-
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-
-	return args.Get(0).(*domain.Item), args.Error(1)
-}
 
 // Test Helpers
 func writeFile(t *testing.T, w io.Writer, data []byte) {
@@ -73,7 +46,7 @@ func closeWriter(t *testing.T, c io.Closer) {
 func TestCreateItem_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	userID := uuid.New()
@@ -105,7 +78,7 @@ func TestCreateItem_Success(t *testing.T) {
 }
 
 func TestCreateItem_InvalidUserID(t *testing.T) {
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	bodyBuffer := &bytes.Buffer{}
@@ -129,7 +102,7 @@ func TestCreateItem_InvalidUserID(t *testing.T) {
 }
 
 func TestUpdateItem_Success(t *testing.T) {
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
@@ -176,7 +149,7 @@ func TestUpdateItem_Success(t *testing.T) {
 }
 
 func TestDeleteItem_Success(t *testing.T) {
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
@@ -204,7 +177,7 @@ func TestDeleteItem_Success(t *testing.T) {
 }
 
 func TestDeleteItem_Unauthorized(t *testing.T) {
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
@@ -232,7 +205,7 @@ func TestDeleteItem_Unauthorized(t *testing.T) {
 }
 
 func TestGetItemByID_Success(t *testing.T) {
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()
@@ -260,7 +233,7 @@ func TestGetItemByID_Success(t *testing.T) {
 }
 
 func TestGetItemByID_NotFound(t *testing.T) {
-	mockService := new(MockItemService)
+	mockService := new(mocks.MockItemService)
 	handler := handlers.NewItemHandler(mockService)
 
 	itemID := uuid.New()

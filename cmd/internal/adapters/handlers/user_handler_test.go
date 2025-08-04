@@ -11,16 +11,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"swapp-go/cmd/internal/adapters/handlers"
+	"swapp-go/cmd/internal/adapters/handlers/mocks"
 	"swapp-go/cmd/internal/domain"
 	"swapp-go/cmd/internal/validators"
 	"testing"
 )
 
 type mapStrStr map[string]string
-
-type MockUserService struct {
-	mock.Mock
-}
 
 type ErrorResponse struct {
 	Error   string `json:"error"`
@@ -79,63 +76,6 @@ var (
 	}
 )
 
-// MockUserService methods
-func (m *MockUserService) RegisterUser(user *domain.User) error {
-	return m.Called(user).Error(0)
-}
-
-func (m *MockUserService) Update(id uuid.UUID, fields map[string]interface{}) (*domain.User, error) {
-	args := m.Called(id, fields)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserService) Delete(id uuid.UUID) error {
-	return m.Called(id).Error(0)
-}
-
-func (m *MockUserService) FindByID(id uuid.UUID) (*domain.User, error) {
-	args := m.Called(id)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserService) FindByUsername(username string) (*domain.User, error) {
-	args := m.Called(username)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserService) FindByEmail(email string) (*domain.User, error) {
-	args := m.Called(email)
-
-	if user, ok := args.Get(0).(*domain.User); ok {
-		return user, args.Error(1)
-	}
-
-	return nil, args.Error(1)
-}
-
-func (m *MockUserService) Authenticate(username, password string) (string, *domain.User, error) {
-	args := m.Called(username, password)
-	token, _ := args.Get(0).(string)
-	user, _ := args.Get(1).(*domain.User)
-
-	return token, user, args.Error(2)
-}
-
 // Test Helpers
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
@@ -157,10 +97,10 @@ func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	return router
 }
 
-func setupTest(t *testing.T) (*MockUserService, *gin.Engine) {
+func setupTest(t *testing.T) (*mocks.MockUserService, *gin.Engine) {
 	t.Helper()
 
-	mockService := new(MockUserService)
+	mockService := new(mocks.MockUserService)
 	handler := handlers.NewUserHandler(mockService)
 	router := setupRouter(handler)
 
@@ -222,7 +162,6 @@ func parseLoginResponse(t *testing.T, response *httptest.ResponseRecorder) *hand
 }
 
 // Tests
-// RegisterUser
 func TestRegisterUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
 
@@ -289,7 +228,6 @@ func TestRegisterUser_InvalidJSON(t *testing.T) {
 	assert.Contains(t, parsedResponse.Details, "invalid character")
 }
 
-// LoginUser
 func TestLoginUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
 
@@ -349,7 +287,6 @@ func TestLoginUser_InvalidJSON(t *testing.T) {
 	assert.Contains(t, errResp.Details, "invalid character")
 }
 
-// Update
 func TestUpdateUser_Success(t *testing.T) {
 	mockService, router := setupTest(t)
 
@@ -377,7 +314,7 @@ func TestUpdateUser_Success(t *testing.T) {
 }
 
 func TestUpdateUser_Failure(t *testing.T) {
-	mockService := new(MockUserService)
+	mockService := new(mocks.MockUserService)
 	handler := handlers.NewUserHandler(mockService)
 
 	router := gin.Default()
