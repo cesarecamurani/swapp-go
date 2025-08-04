@@ -161,255 +161,245 @@ func parseLoginResponse(t *testing.T, response *httptest.ResponseRecorder) *hand
 	return &loginResponse
 }
 
-// Tests
-func TestRegisterUser_Success(t *testing.T) {
-	mockService, router := setupTest(t)
+func TestUserHandler(t *testing.T) {
+	t.Run("RegisterUser", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService, router := setupTest(t)
 
-	mockService.
-		On("RegisterUser", mock.AnythingOfType("*domain.User")).
-		Return(nil)
+			mockService.
+				On("RegisterUser", mock.AnythingOfType("*domain.User")).
+				Return(nil)
 
-	userPayload := map[string]string{
-		"username": username,
-		"email":    email,
-		"password": password,
-		"phone":    phone,
-		"address":  address,
-	}
+			userPayload := map[string]string{
+				"username": username,
+				"email":    email,
+				"password": password,
+				"phone":    phone,
+				"address":  address,
+			}
 
-	response := performRequest(t, router, http.MethodPost, "/users/register", userPayload)
+			response := performRequest(t, router, http.MethodPost, "/users/register", userPayload)
+			assert.Equal(t, http.StatusCreated, response.Code)
 
-	assert.Equal(t, http.StatusCreated, response.Code)
-	mockService.AssertExpectations(t)
-}
+			mockService.AssertExpectations(t)
+		})
 
-func TestRegisterUser_UsernameExists(t *testing.T) {
-	mockService, router := setupTest(t)
+		t.Run("username_exists", func(t *testing.T) {
+			mockService, router := setupTest(t)
 
-	mockService.
-		On("RegisterUser", mock.AnythingOfType("*domain.User")).
-		Return(errors.New(expectedUsernameErr))
+			mockService.
+				On("RegisterUser", mock.AnythingOfType("*domain.User")).
+				Return(errors.New(expectedUsernameErr))
 
-	response := performRequest(t, router, http.MethodPost, "/users/register", domainUser)
-	assert.Equal(t, http.StatusBadRequest, response.Code)
+			response := performRequest(t, router, http.MethodPost, "/users/register", domainUser)
+			assert.Equal(t, http.StatusBadRequest, response.Code)
 
-	parsedResponse := parseErrorResponse(t, response)
-	assert.Equal(t, invalidRequestErr, parsedResponse.Error)
-	assert.Equal(t, expectedUsernameErr, parsedResponse.Details)
+			resp := parseErrorResponse(t, response)
+			assert.Equal(t, invalidRequestErr, resp.Error)
+			assert.Equal(t, expectedUsernameErr, resp.Details)
 
-	mockService.AssertExpectations(t)
-}
+			mockService.AssertExpectations(t)
+		})
 
-func TestRegisterUser_EmailAlreadyExists(t *testing.T) {
-	mockService, router := setupTest(t)
+		t.Run("email_exists", func(t *testing.T) {
+			mockService, router := setupTest(t)
 
-	mockService.
-		On("RegisterUser", mock.AnythingOfType("*domain.User")).
-		Return(errors.New(expectedEmailErr))
+			mockService.
+				On("RegisterUser", mock.AnythingOfType("*domain.User")).
+				Return(errors.New(expectedEmailErr))
 
-	response := performRequest(t, router, http.MethodPost, "/users/register", domainUser)
-	assert.Equal(t, http.StatusBadRequest, response.Code)
+			response := performRequest(t, router, http.MethodPost, "/users/register", domainUser)
+			assert.Equal(t, http.StatusBadRequest, response.Code)
 
-	parsedResponse := parseErrorResponse(t, response)
-	assert.Equal(t, invalidRequestErr, parsedResponse.Error)
-	assert.Equal(t, expectedEmailErr, parsedResponse.Details)
+			resp := parseErrorResponse(t, response)
+			assert.Equal(t, invalidRequestErr, resp.Error)
+			assert.Equal(t, expectedEmailErr, resp.Details)
 
-	mockService.AssertExpectations(t)
-}
+			mockService.AssertExpectations(t)
+		})
 
-func TestRegisterUser_InvalidJSON(t *testing.T) {
-	_, router := setupTest(t)
+		t.Run("invalid_json", func(t *testing.T) {
+			_, router := setupTest(t)
 
-	response := performRequest(t, router, http.MethodPost, "/users/register", "{invalid-json")
-	assert.Equal(t, http.StatusBadRequest, response.Code)
+			response := performRequest(t, router, http.MethodPost, "/users/register", "{invalid-json")
+			assert.Equal(t, http.StatusBadRequest, response.Code)
 
-	parsedResponse := parseErrorResponse(t, response)
-	assert.Equal(t, invalidRequestErr, parsedResponse.Error)
-	assert.Contains(t, parsedResponse.Details, "invalid character")
-}
-
-func TestLoginUser_Success(t *testing.T) {
-	mockService, router := setupTest(t)
-
-	userID := uuid.New()
-	testUser := &domain.User{
-		ID:       userID,
-		Username: username,
-		Email:    email,
-		Password: password,
-		Phone:    &phone,
-		Address:  &address,
-	}
-
-	mockService.
-		On("Authenticate", username, password).
-		Return(testToken, testUser, nil)
-
-	response := performRequest(t, router, http.MethodPost, "/users/login", loginPayload(username, password))
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	loginResponse := parseLoginResponse(t, response)
-	assert.Equal(t, testUser.ID.String(), loginResponse.UserID)
-	assert.Equal(t, testUser.Username, loginResponse.Username)
-	assert.Equal(t, testUser.Email, loginResponse.Email)
-	assert.Equal(t, testUser.Phone, loginResponse.Phone)
-	assert.Equal(t, testUser.Address, loginResponse.Address)
-	assert.Equal(t, testToken, loginResponse.Token)
-
-	mockService.AssertExpectations(t)
-}
-
-func TestLoginUser_InvalidCredentials(t *testing.T) {
-	mockService, router := setupTest(t)
-
-	mockService.
-		On("Authenticate", username, password).
-		Return("", nil, errors.New("invalid credentials"))
-
-	response := performRequest(t, router, http.MethodPost, "/users/login", loginPayload(username, password))
-	assert.Equal(t, http.StatusUnauthorized, response.Code)
-
-	errResponse := parseErrorResponse(t, response)
-	assert.Equal(t, "Unauthorized", errResponse.Error)
-	assert.Equal(t, "invalid credentials", errResponse.Details)
-
-	mockService.AssertExpectations(t)
-}
-
-func TestLoginUser_InvalidJSON(t *testing.T) {
-	_, router := setupTest(t)
-
-	response := performRequest(t, router, http.MethodPost, "/users/login", "{not-json")
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-
-	errResp := parseErrorResponse(t, response)
-	assert.Equal(t, invalidRequestErr, errResp.Error)
-	assert.Contains(t, errResp.Details, "invalid character")
-}
-
-func TestUpdateUser_Success(t *testing.T) {
-	mockService, router := setupTest(t)
-
-	mockService.
-		On("Update", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
-			return fields["username"] == updatedUsername &&
-				fields["email"] == updatedEmail &&
-				fields["phone"] == updatedPhone &&
-				fields["address"] == updatedAddress
-		})).
-		Return(updatedUser, nil)
-
-	response := performRequest(t, router, http.MethodPatch, "/users/update", updatePayload)
-
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	var parsedResponse UserResponse
-
-	err := json.Unmarshal(response.Body.Bytes(), &parsedResponse)
-
-	assert.NoError(t, err)
-	assert.Equal(t, updateUserSuccessMsg, parsedResponse.Message)
-
-	mockService.AssertExpectations(t)
-}
-
-func TestUpdateUser_Failure(t *testing.T) {
-	mockService := new(mocks.MockUserService)
-	handler := handlers.NewUserHandler(mockService)
-
-	router := gin.Default()
-	router.PATCH("/users/update", func(context *gin.Context) {
-		context.Set("userID", uuid.Nil.String())
-		handler.Update(context)
+			resp := parseErrorResponse(t, response)
+			assert.Equal(t, invalidRequestErr, resp.Error)
+			assert.Contains(t, resp.Details, "invalid character")
+		})
 	})
 
-	expectedErr := errors.New("user not found")
+	t.Run("LoginUser", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService, router := setupTest(t)
 
-	mockService.
-		On("Update", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
-			return fields["username"] == updatedUsername &&
-				fields["email"] == updatedEmail &&
-				fields["phone"] == updatedPhone &&
-				fields["address"] == updatedAddress
-		})).
-		Return(nil, expectedErr)
+			userID := uuid.New()
+			testUser := &domain.User{
+				ID:       userID,
+				Username: username,
+				Email:    email,
+				Password: password,
+				Phone:    &phone,
+				Address:  &address,
+			}
 
-	body, _ := json.Marshal(updatePayload)
-	request, _ := http.NewRequest(http.MethodPatch, "/users/update", bytes.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
+			mockService.
+				On("Authenticate", username, password).
+				Return(testToken, testUser, nil)
 
-	response := httptest.NewRecorder()
-	router.ServeHTTP(response, request)
+			response := performRequest(t, router, http.MethodPost, "/users/login", loginPayload(username, password))
+			assert.Equal(t, http.StatusOK, response.Code)
 
-	assert.Equal(t, http.StatusInternalServerError, response.Code)
+			loginResp := parseLoginResponse(t, response)
+			assert.Equal(t, testUser.ID.String(), loginResp.UserID)
+			assert.Equal(t, testUser.Username, loginResp.Username)
+			assert.Equal(t, testUser.Email, loginResp.Email)
+			assert.Equal(t, testUser.Phone, loginResp.Phone)
+			assert.Equal(t, testUser.Address, loginResp.Address)
+			assert.Equal(t, testToken, loginResp.Token)
 
-	var errResponse ErrorResponse
+			mockService.AssertExpectations(t)
+		})
 
-	err := json.Unmarshal(response.Body.Bytes(), &errResponse)
+		t.Run("invalid_credentials", func(t *testing.T) {
+			mockService, router := setupTest(t)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "Failed to update user", errResponse.Error)
-	assert.Equal(t, "user not found", errResponse.Details)
+			mockService.
+				On("Authenticate", username, password).
+				Return("", nil, errors.New("invalid credentials"))
 
-	mockService.AssertExpectations(t)
-}
+			response := performRequest(t, router, http.MethodPost, "/users/login", loginPayload(username, password))
+			assert.Equal(t, http.StatusUnauthorized, response.Code)
 
-func TestUpdateUser_InvalidPhone(t *testing.T) {
-	_, router := setupTest(t)
+			errResp := parseErrorResponse(t, response)
+			assert.Equal(t, "Unauthorized", errResp.Error)
+			assert.Equal(t, "invalid credentials", errResp.Details)
 
-	invalidPhonePayload := map[string]interface{}{
-		"username": updatedUsername,
-		"email":    updatedEmail,
-		"phone":    "1234567890",
-		"address":  updatedAddress,
-	}
+			mockService.AssertExpectations(t)
+		})
 
-	response := performRequest(t, router, http.MethodPatch, "/users/update", invalidPhonePayload)
+		t.Run("invalid_json", func(t *testing.T) {
+			_, router := setupTest(t)
 
-	assert.Equal(t, http.StatusBadRequest, response.Code)
+			response := performRequest(t, router, http.MethodPost, "/users/login", "{not-json")
+			assert.Equal(t, http.StatusBadRequest, response.Code)
 
-	errResp := parseErrorResponse(t, response)
-	assert.Equal(t, invalidRequestErr, errResp.Error)
-	assert.Contains(t, errResp.Details, "Phone")
-}
+			errResp := parseErrorResponse(t, response)
+			assert.Equal(t, invalidRequestErr, errResp.Error)
+			assert.Contains(t, errResp.Details, "invalid character")
+		})
+	})
 
-// Delete
-func TestDeleteUser_Success(t *testing.T) {
-	mockService, router := setupTest(t)
+	t.Run("UpdateUser", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService, router := setupTest(t)
 
-	mockService.
-		On("Delete", uuid.Nil).
-		Return(nil)
+			mockService.
+				On("Update", uuid.Nil, mock.MatchedBy(func(fields map[string]interface{}) bool {
+					return fields["username"] == updatedUsername &&
+						fields["email"] == updatedEmail &&
+						fields["phone"] == updatedPhone &&
+						fields["address"] == updatedAddress
+				})).
+				Return(updatedUser, nil)
 
-	response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
+			response := performRequest(t, router, http.MethodPatch, "/users/update", updatePayload)
+			assert.Equal(t, http.StatusOK, response.Code)
 
-	assert.Equal(t, http.StatusOK, response.Code)
+			var parsed UserResponse
+			err := json.Unmarshal(response.Body.Bytes(), &parsed)
+			assert.NoError(t, err)
+			assert.Equal(t, updateUserSuccessMsg, parsed.Message)
 
-	var parsed map[string]string
+			mockService.AssertExpectations(t)
+		})
 
-	err := json.Unmarshal(response.Body.Bytes(), &parsed)
+		t.Run("failure", func(t *testing.T) {
+			mockService := new(mocks.MockUserService)
+			handler := handlers.NewUserHandler(mockService)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "User deleted successfully!", parsed["message"])
+			router := gin.Default()
+			router.PATCH("/users/update", func(c *gin.Context) {
+				c.Set("userID", uuid.Nil.String())
+				handler.Update(c)
+			})
 
-	mockService.AssertExpectations(t)
-}
+			mockService.
+				On("Update", uuid.Nil, mock.Anything).
+				Return(nil, errors.New("user not found"))
 
-func TestDeleteUser_Failure(t *testing.T) {
-	mockService, router := setupTest(t)
+			body, _ := json.Marshal(updatePayload)
+			req, _ := http.NewRequest(http.MethodPatch, "/users/update", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
 
-	mockService.
-		On("Delete", uuid.Nil).
-		Return(errors.New("something went wrong"))
+			resp := httptest.NewRecorder()
+			router.ServeHTTP(resp, req)
 
-	response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
+			assert.Equal(t, http.StatusInternalServerError, resp.Code)
 
-	assert.Equal(t, http.StatusInternalServerError, response.Code)
+			var errResp ErrorResponse
+			err := json.Unmarshal(resp.Body.Bytes(), &errResp)
+			assert.NoError(t, err)
+			assert.Equal(t, "Failed to update user", errResp.Error)
+			assert.Equal(t, "user not found", errResp.Details)
 
-	errResponse := parseErrorResponse(t, response)
+			mockService.AssertExpectations(t)
+		})
 
-	assert.Equal(t, "Failed to delete user", errResponse.Error)
-	assert.Equal(t, "something went wrong", errResponse.Details)
+		t.Run("invalid_phone", func(t *testing.T) {
+			_, router := setupTest(t)
 
-	mockService.AssertExpectations(t)
+			invalidPayload := map[string]interface{}{
+				"username": updatedUsername,
+				"email":    updatedEmail,
+				"phone":    "1234567890",
+				"address":  updatedAddress,
+			}
+
+			response := performRequest(t, router, http.MethodPatch, "/users/update", invalidPayload)
+			assert.Equal(t, http.StatusBadRequest, response.Code)
+
+			errResp := parseErrorResponse(t, response)
+			assert.Equal(t, invalidRequestErr, errResp.Error)
+			assert.Contains(t, errResp.Details, "Phone")
+		})
+	})
+
+	t.Run("DeleteUser", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService, router := setupTest(t)
+
+			mockService.
+				On("Delete", uuid.Nil).
+				Return(nil)
+
+			response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
+			assert.Equal(t, http.StatusOK, response.Code)
+
+			var parsed map[string]string
+			err := json.Unmarshal(response.Body.Bytes(), &parsed)
+			assert.NoError(t, err)
+			assert.Equal(t, "User deleted successfully!", parsed["message"])
+
+			mockService.AssertExpectations(t)
+		})
+
+		t.Run("failure", func(t *testing.T) {
+			mockService, router := setupTest(t)
+
+			mockService.
+				On("Delete", uuid.Nil).
+				Return(errors.New("something went wrong"))
+
+			response := performRequest(t, router, http.MethodDelete, "/users/delete", nil)
+			assert.Equal(t, http.StatusInternalServerError, response.Code)
+
+			errResp := parseErrorResponse(t, response)
+			assert.Equal(t, "Failed to delete user", errResp.Error)
+			assert.Equal(t, "something went wrong", errResp.Details)
+
+			mockService.AssertExpectations(t)
+		})
+	})
 }

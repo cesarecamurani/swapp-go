@@ -7,13 +7,6 @@ import (
 
 type SwapRequestStatus string
 
-const (
-	StatusPending   SwapRequestStatus = "pending"
-	StatusAccepted  SwapRequestStatus = "accepted"
-	StatusRejected  SwapRequestStatus = "rejected"
-	StatusCancelled SwapRequestStatus = "cancelled"
-)
-
 type SwapRequestModel struct {
 	ID              uuid.UUID         `gorm:"primary_key"`
 	Status          SwapRequestStatus `gorm:"type:varchar(20)"`
@@ -27,5 +20,5 @@ type SwapRequestModel struct {
 }
 
 func (SwapRequestModel) TableName() string {
-	return "swapp_requests"
+	return "swap_requests"
 }

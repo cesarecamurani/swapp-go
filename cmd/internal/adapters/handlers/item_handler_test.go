@@ -43,209 +43,207 @@ func closeWriter(t *testing.T, c io.Closer) {
 }
 
 // Tests
-func TestCreateItem_Success(t *testing.T) {
+func TestItemHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+	t.Run("Create", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
+			userID := uuid.New()
 
-	userID := uuid.New()
+			mockService.On("Create", mock.AnythingOfType("*domain.Item")).Return(nil)
 
-	mockService.On("Create", mock.AnythingOfType("*domain.Item")).Return(nil)
+			bodyBuffer := &bytes.Buffer{}
+			formWriter := multipart.NewWriter(bodyBuffer)
+			_ = formWriter.WriteField("name", "Test Item")
+			_ = formWriter.WriteField("description", "A good item")
 
-	bodyBuffer := &bytes.Buffer{}
-	formWriter := multipart.NewWriter(bodyBuffer)
-	_ = formWriter.WriteField("name", "Test Item")
-	_ = formWriter.WriteField("description", "A good item")
+			fileWriter, _ := formWriter.CreateFormFile("picture", "image.jpg")
+			writeFile(t, fileWriter, []byte("fake image content"))
+			closeWriter(t, formWriter)
 
-	fileWriter, _ := formWriter.CreateFormFile("picture", "image.jpg")
-	writeFile(t, fileWriter, []byte("fake image content"))
-	closeWriter(t, formWriter)
+			request := httptest.NewRequest(http.MethodPost, "/items/create", bodyBuffer)
+			request.Header.Set("Content-Type", formWriter.FormDataContentType())
 
-	request := httptest.NewRequest(http.MethodPost, "/items/create", bodyBuffer)
-	request.Header.Set("Content-Type", formWriter.FormDataContentType())
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Set("userID", userID.String())
 
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Set("userID", userID.String())
+			handler.Create(context)
 
-	handler.Create(context)
+			assert.Equal(t, http.StatusCreated, responseRecorder.Code)
+			assert.Contains(t, responseRecorder.Body.String(), "Item created successfully!")
+			mockService.AssertCalled(t, "Create", mock.AnythingOfType("*domain.Item"))
+		})
 
-	assert.Equal(t, http.StatusCreated, responseRecorder.Code)
-	assert.Contains(t, responseRecorder.Body.String(), "Item created successfully!")
-	mockService.AssertCalled(t, "Create", mock.AnythingOfType("*domain.Item"))
-}
+		t.Run("invalid_user_id", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
 
-func TestCreateItem_InvalidUserID(t *testing.T) {
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+			bodyBuffer := &bytes.Buffer{}
+			formWriter := multipart.NewWriter(bodyBuffer)
+			writeFormField(t, formWriter, "name", "Some Item")
+			writeFormField(t, formWriter, "description", "Description")
+			closeWriter(t, formWriter)
 
-	bodyBuffer := &bytes.Buffer{}
-	formWriter := multipart.NewWriter(bodyBuffer)
-	writeFormField(t, formWriter, "name", "Some Item")
-	writeFormField(t, formWriter, "description", "Description")
-	closeWriter(t, formWriter)
+			request := httptest.NewRequest(http.MethodPost, "/items/create", bodyBuffer)
+			request.Header.Set("Content-Type", formWriter.FormDataContentType())
 
-	request := httptest.NewRequest(http.MethodPost, "/items/create", bodyBuffer)
-	request.Header.Set("Content-Type", formWriter.FormDataContentType())
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Set("userID", "invalid-uuid")
 
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Set("userID", "invalid-uuid")
+			handler.Create(context)
 
-	handler.Create(context)
+			assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
+			assert.Contains(t, responseRecorder.Body.String(), "Invalid user ID")
+		})
+	})
 
-	assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-	assert.Contains(t, responseRecorder.Body.String(), "Invalid user ID")
-}
+	t.Run("Update", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
 
-func TestUpdateItem_Success(t *testing.T) {
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+			itemID := uuid.New()
+			userID := uuid.New()
 
-	itemID := uuid.New()
-	userID := uuid.New()
+			existingItem := &domain.Item{ID: itemID, UserID: userID}
+			updatedItem := &domain.Item{
+				ID:          itemID,
+				Name:        "Updated Name",
+				Description: "Updated Description",
+				PictureURL:  "/uploads/new.jpg",
+				UserID:      userID,
+			}
 
-	existingItem := &domain.Item{
-		ID:     itemID,
-		UserID: userID,
-	}
+			mockService.On("FindByID", itemID).Return(existingItem, nil)
+			mockService.On("Update", itemID, mock.AnythingOfType("map[string]interface {}")).Return(updatedItem, nil)
 
-	updatedItem := &domain.Item{
-		ID:          itemID,
-		Name:        "Updated Name",
-		Description: "Updated Description",
-		PictureURL:  "/uploads/new.jpg",
-		UserID:      userID,
-	}
+			bodyBuffer := &bytes.Buffer{}
+			formWriter := multipart.NewWriter(bodyBuffer)
+			_ = formWriter.WriteField("name", "Updated Name")
+			_ = formWriter.WriteField("description", "Updated Description")
 
-	mockService.On("FindByID", itemID).Return(existingItem, nil)
-	mockService.On("Update", itemID, mock.AnythingOfType("map[string]interface {}")).Return(updatedItem, nil)
+			fileWriter, _ := formWriter.CreateFormFile("picture", "new.jpg")
+			writeFile(t, fileWriter, []byte("new image content"))
+			closeWriter(t, formWriter)
 
-	bodyBuffer := &bytes.Buffer{}
-	formWriter := multipart.NewWriter(bodyBuffer)
-	_ = formWriter.WriteField("name", "Updated Name")
-	_ = formWriter.WriteField("description", "Updated Description")
+			request := httptest.NewRequest(http.MethodPost, "/items/"+itemID.String(), bodyBuffer)
+			request.Header.Set("Content-Type", formWriter.FormDataContentType())
 
-	fileWriter, _ := formWriter.CreateFormFile("picture", "new.jpg")
-	writeFile(t, fileWriter, []byte("new image content"))
-	closeWriter(t, formWriter)
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
+			context.Set("userID", userID.String())
 
-	request := httptest.NewRequest(http.MethodPost, "/items/"+itemID.String(), bodyBuffer)
-	request.Header.Set("Content-Type", formWriter.FormDataContentType())
+			handler.Update(context)
 
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
-	context.Set("userID", userID.String())
+			assert.Equal(t, http.StatusOK, responseRecorder.Code)
+			assert.Contains(t, responseRecorder.Body.String(), "Item updated successfully")
+		})
+	})
 
-	handler.Update(context)
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
 
-	assert.Equal(t, http.StatusOK, responseRecorder.Code)
-	assert.Contains(t, responseRecorder.Body.String(), "Item updated successfully")
-}
+			itemID := uuid.New()
+			userID := uuid.New()
 
-func TestDeleteItem_Success(t *testing.T) {
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+			item := &domain.Item{ID: itemID, UserID: userID}
 
-	itemID := uuid.New()
-	userID := uuid.New()
+			mockService.On("FindByID", itemID).Return(item, nil)
+			mockService.On("Delete", itemID).Return(nil)
 
-	item := &domain.Item{
-		ID:     itemID,
-		UserID: userID,
-	}
+			request := httptest.NewRequest(http.MethodDelete, "/items/"+itemID.String(), nil)
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
+			context.Set("userID", userID.String())
 
-	mockService.On("FindByID", itemID).Return(item, nil)
-	mockService.On("Delete", itemID).Return(nil)
+			handler.Delete(context)
 
-	request := httptest.NewRequest(http.MethodDelete, "/items/"+itemID.String(), nil)
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
-	context.Set("userID", userID.String())
+			assert.Equal(t, http.StatusOK, responseRecorder.Code)
+			assert.Contains(t, responseRecorder.Body.String(), "Item deleted successfully!")
+		})
 
-	handler.Delete(context)
+		t.Run("unauthorized", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
 
-	assert.Equal(t, http.StatusOK, responseRecorder.Code)
-	assert.Contains(t, responseRecorder.Body.String(), "Item deleted successfully!")
-}
+			itemID := uuid.New()
+			itemOwnerID := uuid.New()
+			requestUserID := uuid.New()
 
-func TestDeleteItem_Unauthorized(t *testing.T) {
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+			item := &domain.Item{ID: itemID, UserID: itemOwnerID}
+			mockService.On("FindByID", itemID).Return(item, nil)
 
-	itemID := uuid.New()
-	itemOwnerID := uuid.New()
-	requestUserID := uuid.New()
+			request := httptest.NewRequest(http.MethodDelete, "/items/"+itemID.String(), nil)
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
+			context.Set("userID", requestUserID.String())
 
-	item := &domain.Item{
-		ID:     itemID,
-		UserID: itemOwnerID,
-	}
+			handler.Delete(context)
 
-	mockService.On("FindByID", itemID).Return(item, nil)
+			assert.Equal(t, http.StatusUnauthorized, responseRecorder.Code)
+			assert.Contains(t, responseRecorder.Body.String(), "doesn't belong to you")
+		})
+	})
 
-	request := httptest.NewRequest(http.MethodDelete, "/items/"+itemID.String(), nil)
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
-	context.Set("userID", requestUserID.String())
+	t.Run("FindByID", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
 
-	handler.Delete(context)
+			itemID := uuid.New()
+			userID := uuid.New()
+			mockItem := &domain.Item{
+				ID:          itemID,
+				Name:        "Test",
+				Description: "A test item",
+				PictureURL:  "/uploads/test.jpg",
+				UserID:      userID,
+			}
 
-	assert.Equal(t, http.StatusUnauthorized, responseRecorder.Code)
-	assert.Contains(t, responseRecorder.Body.String(), "doesn't belong to you")
-}
+			mockService.On("FindByID", itemID).Return(mockItem, nil)
 
-func TestGetItemByID_Success(t *testing.T) {
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+			request := httptest.NewRequest(http.MethodGet, "/items/"+itemID.String(), nil)
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 
-	itemID := uuid.New()
-	userID := uuid.New()
+			handler.FindByID(context)
 
-	mockItem := &domain.Item{
-		ID:          itemID,
-		Name:        "Test",
-		Description: "A test item",
-		PictureURL:  "/uploads/test.jpg",
-		UserID:      userID,
-	}
-	mockService.On("FindByID", itemID).Return(mockItem, nil)
+			assert.Equal(t, http.StatusOK, responseRecorder.Code)
+			assert.Contains(t, responseRecorder.Body.String(), itemID.String())
+		})
 
-	request := httptest.NewRequest(http.MethodGet, "/items/"+itemID.String(), nil)
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
+		t.Run("not_found", func(t *testing.T) {
+			mockService := new(mocks.MockItemService)
+			handler := handlers.NewItemHandler(mockService)
 
-	handler.FindByID(context)
+			itemID := uuid.New()
+			mockService.On("FindByID", itemID).Return(nil, errors.New("not found"))
 
-	assert.Equal(t, http.StatusOK, responseRecorder.Code)
-	assert.Contains(t, responseRecorder.Body.String(), itemID.String())
-}
+			request := httptest.NewRequest(http.MethodGet, "/items/"+itemID.String(), nil)
+			responseRecorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(responseRecorder)
+			context.Request = request
+			context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
 
-func TestGetItemByID_NotFound(t *testing.T) {
-	mockService := new(mocks.MockItemService)
-	handler := handlers.NewItemHandler(mockService)
+			handler.FindByID(context)
 
-	itemID := uuid.New()
-	mockService.On("FindByID", itemID).Return(nil, errors.New("not found"))
-
-	request := httptest.NewRequest(http.MethodGet, "/items/"+itemID.String(), nil)
-	responseRecorder := httptest.NewRecorder()
-	context, _ := gin.CreateTestContext(responseRecorder)
-	context.Request = request
-	context.Params = gin.Params{{Key: "id", Value: itemID.String()}}
-
-	handler.FindByID(context)
-
-	assert.Equal(t, http.StatusNotFound, responseRecorder.Code)
+			assert.Equal(t, http.StatusNotFound, responseRecorder.Code)
+		})
+	})
 }

@@ -2,13 +2,15 @@ package services_test
 
 import (
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"swapp-go/cmd/internal/application/services"
+	"swapp-go/cmd/internal/application/services/mocks"
 	"swapp-go/cmd/internal/domain"
-	"testing"
-	"time"
 )
 
 var (
@@ -16,82 +18,61 @@ var (
 	invalidToken = "invalid_token"
 )
 
-// Mocks
-type MockPasswordResetRepository struct {
-	mock.Mock
-}
+func TestPasswordResetService(t *testing.T) {
+	t.Run("GenerateAndSaveToken_Success", func(t *testing.T) {
+		repo := new(mocks.MockPasswordResetRepository)
+		resetService := services.NewPasswordResetService(repo)
+		userID := uuid.New()
 
-func (m *MockPasswordResetRepository) Save(token *domain.PasswordReset) error {
-	args := m.Called(token)
-	return args.Error(0)
-}
+		repo.On("Save", mock.AnythingOfType("*domain.PasswordReset")).Return(nil)
 
-func (m *MockPasswordResetRepository) GetByToken(token string) (*domain.PasswordReset, error) {
-	args := m.Called(token)
-	result := args.Get(0)
-	if result == nil {
-		return nil, args.Error(1)
-	}
-	return result.(*domain.PasswordReset), args.Error(1)
-}
+		token, err := resetService.GenerateAndSaveToken(userID)
 
-func (m *MockPasswordResetRepository) Delete(token string) error {
-	args := m.Called(token)
-	return args.Error(0)
-}
+		assert.NoError(t, err)
+		assert.NotEmpty(t, token)
+		repo.AssertCalled(t, "Save", mock.AnythingOfType("*domain.PasswordReset"))
+	})
 
-// Tests
-func TestGenerateAndSaveToken_Success(t *testing.T) {
-	repo := new(MockPasswordResetRepository)
-	resetService := services.NewPasswordResetService(repo)
-	userID := uuid.New()
+	t.Run("ValidateToken_Valid", func(t *testing.T) {
+		repo := new(mocks.MockPasswordResetRepository)
+		resetService := services.NewPasswordResetService(repo)
 
-	repo.On("Save", mock.AnythingOfType("*domain.PasswordReset")).Return(nil)
-	token, err := resetService.GenerateAndSaveToken(userID)
+		expiresAt := time.Now().Add(1 * time.Hour)
+		resetToken := &domain.PasswordReset{
+			Token:     validToken,
+			UserID:    uuid.New(),
+			ExpiresAt: expiresAt,
+		}
 
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
-	repo.AssertCalled(t, "Save", mock.AnythingOfType("*domain.PasswordReset"))
-}
+		repo.On("GetByToken", validToken).Return(resetToken, nil)
 
-func TestValidateToken_Valid(t *testing.T) {
-	repo := new(MockPasswordResetRepository)
-	resetService := services.NewPasswordResetService(repo)
+		token, err := resetService.ValidateToken(validToken)
 
-	expiredAt := time.Now().Add(1 * time.Hour)
-	resetToken := &domain.PasswordReset{
-		Token:     validToken,
-		UserID:    uuid.New(),
-		ExpiresAt: expiredAt,
-	}
-	repo.On("GetByToken", validToken).Return(resetToken, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, resetToken, token)
+	})
 
-	token, err := resetService.ValidateToken(validToken)
+	t.Run("ValidateToken_Invalid", func(t *testing.T) {
+		repo := new(mocks.MockPasswordResetRepository)
+		resetService := services.NewPasswordResetService(repo)
 
-	assert.NoError(t, err)
-	assert.Equal(t, resetToken, token)
-}
+		repo.On("GetByToken", invalidToken).Return(nil, errors.New("not found"))
 
-func TestValidateToken_Invalid(t *testing.T) {
-	repo := new(MockPasswordResetRepository)
-	resetService := services.NewPasswordResetService(repo)
+		token, err := resetService.ValidateToken(invalidToken)
 
-	repo.On("GetByToken", invalidToken).Return(nil, errors.New("not found"))
+		assert.Error(t, err)
+		assert.Nil(t, token)
+	})
 
-	token, err := resetService.ValidateToken(invalidToken)
+	t.Run("DeleteToken_Success", func(t *testing.T) {
+		repo := new(mocks.MockPasswordResetRepository)
+		resetService := services.NewPasswordResetService(repo)
 
-	assert.Error(t, err)
-	assert.Nil(t, token)
-}
+		repo.On("Delete", validToken).Return(nil)
 
-func TestDeleteToken_Success(t *testing.T) {
-	repo := new(MockPasswordResetRepository)
-	resetService := services.NewPasswordResetService(repo)
+		err := resetService.DeleteToken(validToken)
 
-	repo.On("Delete", validToken).Return(nil)
-
-	err := resetService.DeleteToken(validToken)
-
-	assert.NoError(t, err)
-	repo.AssertCalled(t, "Delete", validToken)
+		assert.NoError(t, err)
+		repo.AssertCalled(t, "Delete", validToken)
+	})
 }

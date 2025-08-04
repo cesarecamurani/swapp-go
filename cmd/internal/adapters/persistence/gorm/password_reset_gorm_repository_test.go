@@ -11,61 +11,55 @@ import (
 	"time"
 )
 
-var validToken = "test_token"
-
-func TestPasswordResetRepository_SaveAndGet(t *testing.T) {
+func TestPasswordResetRepository(t *testing.T) {
 	db := testutils.SetupTestDB(t, &models.PasswordResetModel{})
 	repo := gormRepo.NewPasswordResetGormRepository(db)
 
-	userID := uuid.New()
-	token := validToken
-	expiresAt := time.Now().Add(1 * time.Hour)
+	t.Run("SaveAndGet", func(t *testing.T) {
+		userID := uuid.New()
+		token := "test_token"
+		expiresAt := time.Now().Add(1 * time.Hour)
 
-	reset := &domain.PasswordReset{
-		Token:     token,
-		UserID:    userID,
-		ExpiresAt: expiresAt,
-	}
+		reset := &domain.PasswordReset{
+			Token:     token,
+			UserID:    userID,
+			ExpiresAt: expiresAt,
+		}
 
-	err := repo.Save(reset)
-	assert.NoError(t, err)
+		err := repo.Save(reset)
+		assert.NoError(t, err)
 
-	retrieved, err := repo.GetByToken(token)
-	assert.NoError(t, err)
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, reset.Token, retrieved.Token)
-	assert.Equal(t, reset.UserID, retrieved.UserID)
-	assert.WithinDuration(t, reset.ExpiresAt, retrieved.ExpiresAt, time.Second)
-}
+		retrieved, err := repo.GetByToken(token)
+		assert.NoError(t, err)
+		assert.NotNil(t, retrieved)
+		assert.Equal(t, reset.Token, retrieved.Token)
+		assert.Equal(t, reset.UserID, retrieved.UserID)
+		assert.WithinDuration(t, reset.ExpiresAt, retrieved.ExpiresAt, time.Second)
+	})
 
-func TestPasswordResetRepository_GetByToken_NotFound(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.PasswordResetModel{})
-	repo := gormRepo.NewPasswordResetGormRepository(db)
+	t.Run("GetByToken_NotFound", func(t *testing.T) {
+		result, err := repo.GetByToken("non_existent_token")
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
 
-	result, err := repo.GetByToken("non_existent_token")
-	assert.Error(t, err)
-	assert.Nil(t, result)
-}
+	t.Run("Delete", func(t *testing.T) {
+		userID := uuid.New()
+		token := "some_token"
 
-func TestPasswordResetRepository_Delete(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.PasswordResetModel{})
-	repo := gormRepo.NewPasswordResetGormRepository(db)
+		reset := &domain.PasswordReset{
+			Token:     token,
+			UserID:    userID,
+			ExpiresAt: time.Now().Add(1 * time.Hour),
+		}
 
-	userID := uuid.New()
-	token := "some_token"
+		err := repo.Save(reset)
+		assert.NoError(t, err)
 
-	reset := &domain.PasswordReset{
-		Token:     token,
-		UserID:    userID,
-		ExpiresAt: time.Now().Add(1 * time.Hour),
-	}
+		err = repo.Delete(token)
+		assert.NoError(t, err)
 
-	err := repo.Save(reset)
-	assert.NoError(t, err)
-
-	err = repo.Delete(token)
-	assert.NoError(t, err)
-
-	_, err = repo.GetByToken(token)
-	assert.Error(t, err)
+		_, err = repo.GetByToken(token)
+		assert.Error(t, err)
+	})
 }

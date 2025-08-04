@@ -53,84 +53,91 @@ func setupPasswordResetTestEnv(t *testing.T) (*gin.Engine, *gorm.DB, *domain.Use
 	return router, db, user, "originalPassword"
 }
 
-func TestRequestReset_Success(t *testing.T) {
-	router, _, user, _ := setupPasswordResetTestEnv(t)
+func TestPasswordResetHandler(t *testing.T) {
+	t.Run("RequestReset", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			router, _, user, _ := setupPasswordResetTestEnv(t)
 
-	payload := map[string]string{"email": user.Email}
-	jsonValue, _ := json.Marshal(payload)
-	request, _ := http.NewRequest("POST", "/request-reset", bytes.NewBuffer(jsonValue))
-	request.Header.Set("Content-Type", "application/json")
+			payload := map[string]string{"email": user.Email}
+			jsonValue, _ := json.Marshal(payload)
+			request, _ := http.NewRequest("POST", "/request-reset", bytes.NewBuffer(jsonValue))
+			request.Header.Set("Content-Type", "application/json")
 
-	resp := httptest.NewRecorder()
-	router.ServeHTTP(resp, request)
+			resp := httptest.NewRecorder()
+			router.ServeHTTP(resp, request)
 
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "token")
-}
+			assert.Equal(t, http.StatusOK, resp.Code)
+			assert.Contains(t, resp.Body.String(), "token")
+		})
+	})
 
-func TestResetPassword_Success(t *testing.T) {
-	router, db, user, _ := setupPasswordResetTestEnv(t)
-	resetRepo := gormRepo.NewPasswordResetGormRepository(db)
-	resetService := services.NewPasswordResetService(resetRepo)
+	t.Run("ResetPassword", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			router, db, user, _ := setupPasswordResetTestEnv(t)
+			resetRepo := gormRepo.NewPasswordResetGormRepository(db)
+			resetService := services.NewPasswordResetService(resetRepo)
 
-	token, err := resetService.GenerateAndSaveToken(user.ID)
-	assert.NoError(t, err)
+			token, err := resetService.GenerateAndSaveToken(user.ID)
+			assert.NoError(t, err)
 
-	payload := map[string]string{
-		"token":        token,
-		"new_password": "newSecurePass123",
-	}
-	jsonValue, _ := json.Marshal(payload)
-	request, _ := http.NewRequest("POST", "/reset-password", bytes.NewBuffer(jsonValue))
-	request.Header.Set("Content-Type", "application/json")
+			payload := map[string]string{
+				"token":        token,
+				"new_password": "newSecurePass123",
+			}
+			jsonValue, _ := json.Marshal(payload)
+			request, _ := http.NewRequest("POST", "/reset-password", bytes.NewBuffer(jsonValue))
+			request.Header.Set("Content-Type", "application/json")
 
-	response := httptest.NewRecorder()
-	router.ServeHTTP(response, request)
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
 
-	assert.Equal(t, http.StatusOK, response.Code)
-	assert.Contains(t, response.Body.String(), "Password reset successfully")
-}
+			assert.Equal(t, http.StatusOK, response.Code)
+			assert.Contains(t, response.Body.String(), "Password reset successfully")
+		})
 
-func TestResetPassword_InvalidToken(t *testing.T) {
-	router, _, _, _ := setupPasswordResetTestEnv(t)
-	payload := map[string]string{
-		"token":        "invalid_token",
-		"new_password": "NewPassword123",
-	}
-	jsonValue, _ := json.Marshal(payload)
-	request, _ := http.NewRequest("POST", "/reset-password", bytes.NewBuffer(jsonValue))
-	request.Header.Set("Content-Type", "application/json")
+		t.Run("invalid_token", func(t *testing.T) {
+			router, _, _, _ := setupPasswordResetTestEnv(t)
 
-	response := httptest.NewRecorder()
-	router.ServeHTTP(response, request)
+			payload := map[string]string{
+				"token":        "invalid_token",
+				"new_password": "NewPassword123",
+			}
+			jsonValue, _ := json.Marshal(payload)
+			request, _ := http.NewRequest("POST", "/reset-password", bytes.NewBuffer(jsonValue))
+			request.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	assert.Contains(t, response.Body.String(), "Invalid or expired token")
-}
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
 
-func TestResetPassword_ExpiredToken(t *testing.T) {
-	router, db, user, _ := setupPasswordResetTestEnv(t)
-	resetRepo := gormRepo.NewPasswordResetGormRepository(db)
+			assert.Equal(t, http.StatusBadRequest, response.Code)
+			assert.Contains(t, response.Body.String(), "Invalid or expired token")
+		})
 
-	expired := &domain.PasswordReset{
-		Token:     uuid.NewString(),
-		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(-1 * time.Hour),
-	}
-	err := resetRepo.Save(expired)
-	assert.NoError(t, err)
+		t.Run("expired_token", func(t *testing.T) {
+			router, db, user, _ := setupPasswordResetTestEnv(t)
+			resetRepo := gormRepo.NewPasswordResetGormRepository(db)
 
-	payload := map[string]string{
-		"token":        expired.Token,
-		"new_password": "NewPassword123",
-	}
-	jsonValue, _ := json.Marshal(payload)
-	request, _ := http.NewRequest("POST", "/reset-password", bytes.NewBuffer(jsonValue))
-	request.Header.Set("Content-Type", "application/json")
+			expired := &domain.PasswordReset{
+				Token:     uuid.NewString(),
+				UserID:    user.ID,
+				ExpiresAt: time.Now().Add(-1 * time.Hour),
+			}
+			err := resetRepo.Save(expired)
+			assert.NoError(t, err)
 
-	response := httptest.NewRecorder()
-	router.ServeHTTP(response, request)
+			payload := map[string]string{
+				"token":        expired.Token,
+				"new_password": "NewPassword123",
+			}
+			jsonValue, _ := json.Marshal(payload)
+			request, _ := http.NewRequest("POST", "/reset-password", bytes.NewBuffer(jsonValue))
+			request.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	assert.Contains(t, response.Body.String(), "Token expired")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+
+			assert.Equal(t, http.StatusBadRequest, response.Code)
+			assert.Contains(t, response.Body.String(), "Token expired")
+		})
+	})
 }

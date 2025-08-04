@@ -3,7 +3,8 @@ package gorm_test
 import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"swapp-go/cmd/internal/adapters/persistence/gorm"
+	"gorm.io/gorm"
+	gormRepo "swapp-go/cmd/internal/adapters/persistence/gorm"
 	"swapp-go/cmd/internal/adapters/persistence/gorm/testutils"
 	"swapp-go/cmd/internal/adapters/persistence/models"
 	"swapp-go/cmd/internal/domain"
@@ -23,98 +24,95 @@ func createTestSwapRequest(offeredItemID, requestedItemID, senderID, receiverID 
 	}
 }
 
-func TestSwapRequestGormRepository_Create(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
-
-	swapRequest := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
-	err := repository.Create(swapRequest)
+func cleanSwapRequestsTable(t *testing.T, db *gorm.DB) {
+	err := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.SwapRequestModel{}).Error
 	assert.NoError(t, err)
-	assert.NotEqual(t, uuid.Nil, swapRequest.ID)
 }
 
-func TestSwapRequestGormRepository_FindByID(t *testing.T) {
+func TestSwapRequestGormRepository(t *testing.T) {
 	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
+	repo := gormRepo.NewSwapRequestGormRepository(db)
 
-	swapRequest := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
-	err := repository.Create(swapRequest)
-	assert.NoError(t, err)
+	t.Run("Create", func(t *testing.T) {
+		swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
+		err := repo.Create(swap)
+		assert.NoError(t, err)
+		assert.NotEqual(t, uuid.Nil, swap.ID)
+	})
 
-	fetched, err := repository.FindByID(swapRequest.ID)
-	assert.NoError(t, err)
-	assert.Equal(t, swapRequest.ID, fetched.ID)
-}
+	t.Run("FindByID", func(t *testing.T) {
+		swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
+		err := repo.Create(swap)
+		assert.NoError(t, err)
 
-func TestSwapRequestGormRepository_FindByReferenceNumber(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
+		fetched, err := repo.FindByID(swap.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, swap.ID, fetched.ID)
+	})
 
-	swapRequest := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
-	swapRequest.ReferenceNumber = referenceNumber
-	_ = repository.Create(swapRequest)
+	t.Run("FindByReferenceNumber", func(t *testing.T) {
+		cleanSwapRequestsTable(t, db)
 
-	found, err := repository.FindByReferenceNumber(referenceNumber)
-	assert.NoError(t, err)
-	assert.Equal(t, swapRequest.ID, found.ID)
-}
+		swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
+		swap.ReferenceNumber = referenceNumber
+		err := repo.Create(swap)
+		assert.NoError(t, err)
 
-func TestSwapRequestGormRepository_ListByUser(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
+		found, err := repo.FindByReferenceNumber(referenceNumber)
+		assert.NoError(t, err)
+		assert.Equal(t, swap.ID, found.ID)
+	})
 
-	userA := uuid.New()
-	userB := uuid.New()
+	t.Run("ListByUser", func(t *testing.T) {
+		userA := uuid.New()
+		userB := uuid.New()
 
-	swap1 := createTestSwapRequest(uuid.New(), uuid.New(), userA, userB)
-	swap2 := createTestSwapRequest(uuid.New(), uuid.New(), userB, userA)
-	_ = repository.Create(swap1)
-	_ = repository.Create(swap2)
+		swap1 := createTestSwapRequest(uuid.New(), uuid.New(), userA, userB)
+		swap2 := createTestSwapRequest(uuid.New(), uuid.New(), userB, userA)
 
-	list, err := repository.ListByUser(userA)
-	assert.NoError(t, err)
-	assert.Len(t, list, 2)
-}
+		_ = repo.Create(swap1)
+		_ = repo.Create(swap2)
 
-func TestSwapRequestGormRepository_ListByStatus(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
+		list, err := repo.ListByUser(userA)
+		assert.NoError(t, err)
+		assert.Len(t, list, 2)
+	})
 
-	swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
-	swap.Status = domain.StatusPending
-	_ = repository.Create(swap)
+	t.Run("ListByStatus", func(t *testing.T) {
+		cleanSwapRequestsTable(t, db)
+		swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
+		swap.Status = domain.StatusPending
+		err := repo.Create(swap)
+		assert.NoError(t, err)
 
-	list, err := repository.ListByStatus(domain.StatusPending)
-	assert.NoError(t, err)
-	assert.Len(t, list, 1)
-	assert.Equal(t, domain.StatusPending, list[0].Status)
-}
+		list, err := repo.ListByStatus(domain.StatusPending)
+		assert.NoError(t, err)
+		assert.Len(t, list, 1)
+		assert.Equal(t, domain.StatusPending, list[0].Status)
+	})
 
-func TestSwapRequestGormRepository_UpdateStatus(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
+	t.Run("UpdateStatus", func(t *testing.T) {
+		swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
+		err := repo.Create(swap)
+		assert.NoError(t, err)
 
-	swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
-	_ = repository.Create(swap)
+		err = repo.UpdateStatus(swap.ID, domain.StatusAccepted)
+		assert.NoError(t, err)
 
-	err := repository.UpdateStatus(swap.ID, domain.StatusAccepted)
-	assert.NoError(t, err)
+		updated, err := repo.FindByID(swap.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, domain.StatusAccepted, updated.Status)
+	})
 
-	updated, err := repository.FindByID(swap.ID)
-	assert.NoError(t, err)
-	assert.Equal(t, domain.StatusAccepted, updated.Status)
-}
+	t.Run("Delete", func(t *testing.T) {
+		swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
+		err := repo.Create(swap)
+		assert.NoError(t, err)
 
-func TestSwapRequestGormRepository_Delete(t *testing.T) {
-	db := testutils.SetupTestDB(t, &models.SwapRequestModel{})
-	repository := gorm.NewSwapRequestGormRepository(db)
+		err = repo.Delete(swap.ID)
+		assert.NoError(t, err)
 
-	swap := createTestSwapRequest(uuid.New(), uuid.New(), uuid.New(), uuid.New())
-	_ = repository.Create(swap)
-
-	err := repository.Delete(swap.ID)
-	assert.NoError(t, err)
-
-	_, err = repository.FindByID(swap.ID)
-	assert.Error(t, err)
+		_, err = repo.FindByID(swap.ID)
+		assert.Error(t, err)
+	})
 }
