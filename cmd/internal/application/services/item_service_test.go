@@ -2,12 +2,12 @@ package services_test
 
 import (
 	"errors"
+	"swapp-go/cmd/internal/application/mocks"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"swapp-go/cmd/internal/application/services"
-	"swapp-go/cmd/internal/application/services/mocks"
 	"swapp-go/cmd/internal/domain"
 )
 

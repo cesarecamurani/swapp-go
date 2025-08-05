@@ -5,8 +5,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"swapp-go/cmd/internal/application/mocks"
 	"swapp-go/cmd/internal/application/services"
-	"swapp-go/cmd/internal/application/services/mocks"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )

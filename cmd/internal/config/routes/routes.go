@@ -1,31 +1,18 @@
-package config
+package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-	"os"
 	"swapp-go/cmd/internal/adapters/handlers"
-	"swapp-go/cmd/internal/adapters/middleware"
-	gormRepo "swapp-go/cmd/internal/adapters/persistence/gorm"
-	"swapp-go/cmd/internal/application/services"
 )
 
-func SetupRoutes(server *gin.Engine, db *gorm.DB) {
-	userRepo := gormRepo.NewUserGormRepository(db)
-	userService := services.NewUserService(userRepo)
-	userHandler := handlers.NewUserHandler(userService)
-
-	passwordResetRepo := gormRepo.NewPasswordResetGormRepository(db)
-	passwordResetService := services.NewPasswordResetService(passwordResetRepo)
-	passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetService, userService)
-
-	itemRepo := gormRepo.NewItemGormRepository(db)
-	itemService := services.NewItemService(itemRepo)
-	itemHandler := handlers.NewItemHandler(itemService)
-
-	swapRequestRepo := gormRepo.NewSwapRequestGormRepository(db)
-	swapRequestService := services.NewSwapRequestService(swapRequestRepo, itemRepo)
-	swapRequestHandler := handlers.NewSwapRequestHandler(swapRequestService)
+func SetupRoutes(
+	server *gin.Engine,
+	userHandler *handlers.UserHandler,
+	itemHandler *handlers.ItemHandler,
+	swapRequestHandler *handlers.SwapRequestHandler,
+	passwordResetHandler *handlers.PasswordResetHandler,
+	authMiddleware gin.HandlerFunc,
+) {
 
 	// Public routes
 	server.POST("/users/register", userHandler.RegisterUser)
@@ -36,7 +23,7 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 
 	// Protected routes
 	protected := server.Group("/")
-	protected.Use(middleware.JwtAuthMiddleware(os.Getenv("JWT_SECRET")))
+	protected.Use(authMiddleware)
 	usersGroup := protected.Group("/users")
 	{
 		usersGroup.GET("/:id", userHandler.FindByID)
@@ -59,5 +46,4 @@ func SetupRoutes(server *gin.Engine, db *gorm.DB) {
 		swapRequestsGroup.DELETE("/delete/:id", swapRequestHandler.Delete)
 		swapRequestsGroup.PATCH("/update-status/:id", swapRequestHandler.UpdateStatus)
 	}
-
 }

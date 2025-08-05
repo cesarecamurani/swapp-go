@@ -5,17 +5,27 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	testMocks "swapp-go/cmd/internal/application/mocks"
 	"swapp-go/cmd/internal/application/services"
-	"swapp-go/cmd/internal/application/services/mocks"
 	"swapp-go/cmd/internal/domain"
 	"testing"
 )
 
-func setupSwapRequestServiceTest() (*services.SwapRequestService, *mocks.SwapRequestRepository, *mocks.ItemRepository) {
-	mockSwapRequestRepo := new(mocks.SwapRequestRepository)
-	mockItemRepo := new(mocks.ItemRepository)
-	service := services.NewSwapRequestService(mockSwapRequestRepo, mockItemRepo)
-	return service, mockSwapRequestRepo, mockItemRepo
+func setupSwapRequestServiceTest() (
+	*services.SwapRequestService,
+	*testMocks.SwapRequestRepository,
+	*testMocks.ItemRepository,
+	*testMocks.MockUserRepository,
+	*testMocks.MockEmailService,
+) {
+	mockSwapRequestRepo := new(testMocks.SwapRequestRepository)
+	mockItemRepo := new(testMocks.ItemRepository)
+	mockUserRepo := new(testMocks.MockUserRepository)
+	mockEmailService := new(testMocks.MockEmailService)
+
+	service := services.NewSwapRequestService(mockSwapRequestRepo, mockUserRepo, mockItemRepo, mockEmailService)
+
+	return service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService
 }
 
 func TestSwapRequestService_Create(t *testing.T) {
@@ -25,21 +35,42 @@ func TestSwapRequestService_Create(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService := setupSwapRequestServiceTest()
+
 		mockItemRepo.On("FindByID", testItemID).Return(&domain.Item{ID: testItemID}, nil).Once()
 		mockItemRepo.On("TryMarkItemAsOffered", testItemID).Return(true, nil).Once()
 		mockItemRepo.On("Update", testItemID, mock.Anything).Return(&domain.Item{ID: testItemID}, nil).Once()
 		mockSwapRequestRepo.On("Create", testRequest).Return(nil).Once()
+
+		senderID := uuid.UUID{}
+		recipientID := uuid.UUID{}
+
+		mockUserRepo.On("FindByID", recipientID).Return(&domain.User{
+			ID:       recipientID,
+			Username: "recipient",
+			Email:    "recipient@example.com",
+		}, nil).Once()
+
+		mockUserRepo.On("FindByID", senderID).Return(&domain.User{
+			ID:       senderID,
+			Username: "sender",
+			Email:    "sender@example.com",
+		}, nil).Once()
+
+		mockEmailService.On("SendEmail", mock.AnythingOfType("*domain.EmailMessage")).Return(nil).Once()
 
 		err := service.Create(testRequest)
 		assert.NoError(t, err)
 
 		mockItemRepo.AssertExpectations(t)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+		mockEmailService.AssertExpectations(t)
 	})
 
 	t.Run("offered item not found", func(t *testing.T) {
-		service, _, mockItemRepo := setupSwapRequestServiceTest()
+		service, _, mockItemRepo, _, _ := setupSwapRequestServiceTest()
+
 		mockItemRepo.On("FindByID", testItemID).Return(nil, errors.New("not found")).Once()
 
 		err := service.Create(testRequest)
@@ -48,7 +79,8 @@ func TestSwapRequestService_Create(t *testing.T) {
 	})
 
 	t.Run("item already offered", func(t *testing.T) {
-		service, _, mockItemRepo := setupSwapRequestServiceTest()
+		service, _, mockItemRepo, _, _ := setupSwapRequestServiceTest()
+
 		mockItemRepo.On("FindByID", testItemID).Return(&domain.Item{ID: testItemID}, nil).Once()
 		mockItemRepo.On("TryMarkItemAsOffered", testItemID).Return(false, nil).Once()
 
@@ -58,7 +90,8 @@ func TestSwapRequestService_Create(t *testing.T) {
 	})
 
 	t.Run("TryMarkItemAsOffered error", func(t *testing.T) {
-		service, _, mockItemRepo := setupSwapRequestServiceTest()
+		service, _, mockItemRepo, _, _ := setupSwapRequestServiceTest()
+
 		mockItemRepo.On("FindByID", testItemID).Return(&domain.Item{ID: testItemID}, nil).Once()
 		mockItemRepo.On("TryMarkItemAsOffered", testItemID).Return(false, errors.New("db error")).Once()
 
@@ -68,7 +101,8 @@ func TestSwapRequestService_Create(t *testing.T) {
 	})
 
 	t.Run("repo.Create error rolls back offered flag", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, _, _ := setupSwapRequestServiceTest()
+
 		mockItemRepo.On("FindByID", testItemID).Return(&domain.Item{ID: testItemID}, nil).Once()
 		mockItemRepo.On("TryMarkItemAsOffered", testItemID).Return(true, nil).Once()
 		mockItemRepo.On("Update", testItemID, mock.MatchedBy(func(m map[string]interface{}) bool {
@@ -91,7 +125,8 @@ func TestSwapRequestService_FindByID(t *testing.T) {
 	expectedSwapRequest := &domain.SwapRequest{ID: existingID}
 
 	t.Run("success", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", existingID).Return(expectedSwapRequest, nil).Once()
 
 		result, err := service.FindByID(existingID)
@@ -102,7 +137,8 @@ func TestSwapRequestService_FindByID(t *testing.T) {
 	})
 
 	t.Run("not found error", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", existingID).Return(nil, errors.New("not found")).Once()
 
 		result, err := service.FindByID(existingID)
@@ -118,7 +154,8 @@ func TestSwapRequestService_FindByReferenceNumber(t *testing.T) {
 	expected := &domain.SwapRequest{ReferenceNumber: reference}
 
 	t.Run("success", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByReferenceNumber", reference).Return(expected, nil).Once()
 
 		result, err := service.FindByReferenceNumber(reference)
@@ -129,7 +166,8 @@ func TestSwapRequestService_FindByReferenceNumber(t *testing.T) {
 	})
 
 	t.Run("not found error", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByReferenceNumber", reference).Return(nil, errors.New("not found")).Once()
 
 		result, err := service.FindByReferenceNumber(reference)
@@ -145,7 +183,8 @@ func TestSwapRequestService_ListByUser(t *testing.T) {
 	expectedList := []domain.SwapRequest{{ID: uuid.New()}, {ID: uuid.New()}}
 
 	t.Run("success", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("ListByUser", userID).Return(expectedList, nil).Once()
 
 		result, err := service.ListByUser(userID)
@@ -156,7 +195,8 @@ func TestSwapRequestService_ListByUser(t *testing.T) {
 	})
 
 	t.Run("error from repo", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("ListByUser", userID).Return(nil, errors.New("db error")).Once()
 
 		result, err := service.ListByUser(userID)
@@ -175,7 +215,8 @@ func TestSwapRequestService_ListByStatus(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("ListByStatus", status).Return(expectedList, nil).Once()
 
 		result, err := service.ListByStatus(status)
@@ -186,7 +227,8 @@ func TestSwapRequestService_ListByStatus(t *testing.T) {
 	})
 
 	t.Run("error from repo", func(t *testing.T) {
-		service, mockSwapRequestRepo, _ := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, _, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("ListByStatus", status).Return(nil, errors.New("db error")).Once()
 
 		result, err := service.ListByStatus(status)
@@ -200,37 +242,81 @@ func TestSwapRequestService_ListByStatus(t *testing.T) {
 func TestSwapRequestService_UpdateStatus(t *testing.T) {
 	swapRequestID := uuid.New()
 	offeredItemID := uuid.New()
-	swapRequest := &domain.SwapRequest{ID: swapRequestID, OfferedItemID: offeredItemID}
+	senderID := uuid.UUID{}
+	recipientID := uuid.UUID{}
 
-	t.Run("success - not rejected/cancelled", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+	swapRequest := &domain.SwapRequest{
+		ID:              swapRequestID,
+		OfferedItemID:   offeredItemID,
+		SenderID:        senderID,
+		RecipientID:     recipientID,
+		ReferenceNumber: "REF123",
+	}
+
+	t.Run("success - accepted", func(t *testing.T) {
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("UpdateStatus", swapRequestID, domain.StatusAccepted).Return(nil).Once()
+
+		mockUserRepo.On("FindByID", recipientID).Return(&domain.User{
+			ID:       recipientID,
+			Username: "recipient",
+			Email:    "recipient@example.com",
+		}, nil).Once()
+
+		mockUserRepo.On("FindByID", senderID).Return(&domain.User{
+			ID:       senderID,
+			Username: "sender",
+			Email:    "sender@example.com",
+		}, nil).Once()
+
+		mockEmailService.On("SendEmail", mock.AnythingOfType("*domain.EmailMessage")).Return(nil).Once()
 
 		err := service.UpdateStatus(swapRequestID, domain.StatusAccepted)
 		assert.NoError(t, err)
 
 		mockItemRepo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+		mockEmailService.AssertExpectations(t)
 	})
 
 	t.Run("success - rejected", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("UpdateStatus", swapRequestID, domain.StatusRejected).Return(nil).Once()
 		mockItemRepo.On("Update", offeredItemID, mock.MatchedBy(func(fields map[string]interface{}) bool {
 			return fields["offered"] == false
 		})).Return(&domain.Item{}, nil).Once()
 
+		mockUserRepo.On("FindByID", recipientID).Return(&domain.User{
+			ID:       recipientID,
+			Username: "recipient",
+			Email:    "recipient@example.com",
+		}, nil).Once()
+
+		mockUserRepo.On("FindByID", senderID).Return(&domain.User{
+			ID:       senderID,
+			Username: "sender",
+			Email:    "sender@example.com",
+		}, nil).Once()
+
+		mockEmailService.On("SendEmail", mock.AnythingOfType("*domain.EmailMessage")).Return(nil).Once()
+
 		err := service.UpdateStatus(swapRequestID, domain.StatusRejected)
 		assert.NoError(t, err)
 
 		mockItemRepo.AssertExpectations(t)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+		mockEmailService.AssertExpectations(t)
 	})
 
 	t.Run("success - cancelled", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("UpdateStatus", swapRequestID, domain.StatusCancelled).Return(nil).Once()
 		mockItemRepo.On("Update", offeredItemID, mock.MatchedBy(func(fields map[string]interface{}) bool {
@@ -242,21 +328,25 @@ func TestSwapRequestService_UpdateStatus(t *testing.T) {
 
 		mockItemRepo.AssertExpectations(t)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertNotCalled(t, "FindByID", mock.Anything)
 	})
 
 	t.Run("error - not found", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(nil, errors.New("not found")).Once()
 
 		err := service.UpdateStatus(swapRequestID, domain.StatusAccepted)
 		assert.Error(t, err)
 
 		mockItemRepo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+		mockUserRepo.AssertNotCalled(t, "FindByID", mock.Anything)
 		mockSwapRequestRepo.AssertExpectations(t)
 	})
 
 	t.Run("error - update failed", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("UpdateStatus", swapRequestID, domain.StatusAccepted).Return(errors.New("update error")).Once()
 
@@ -264,43 +354,88 @@ func TestSwapRequestService_UpdateStatus(t *testing.T) {
 		assert.Error(t, err)
 
 		mockItemRepo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+		mockUserRepo.AssertNotCalled(t, "FindByID", mock.Anything)
 		mockSwapRequestRepo.AssertExpectations(t)
 	})
 
 	t.Run("error - reset offered status failed", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("UpdateStatus", swapRequestID, domain.StatusRejected).Return(nil).Once()
 		mockItemRepo.On("Update", offeredItemID, mock.Anything).Return(nil, errors.New("update error")).Once()
+
+		mockUserRepo.On("FindByID", recipientID).Return(&domain.User{
+			ID:       recipientID,
+			Username: "recipient",
+			Email:    "recipient@example.com",
+		}, nil).Once()
+
+		mockUserRepo.On("FindByID", senderID).Return(&domain.User{
+			ID:       senderID,
+			Username: "sender",
+			Email:    "sender@example.com",
+		}, nil).Once()
+
+		mockEmailService.On("SendEmail", mock.AnythingOfType("*domain.EmailMessage")).Return(nil).Once()
 
 		err := service.UpdateStatus(swapRequestID, domain.StatusRejected)
 		assert.Error(t, err)
 
 		mockItemRepo.AssertExpectations(t)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+		mockEmailService.AssertExpectations(t)
 	})
 }
 
 func TestSwapRequestService_Delete(t *testing.T) {
 	swapRequestID := uuid.New()
 	offeredItemID := uuid.New()
-	swapRequest := &domain.SwapRequest{ID: swapRequestID, OfferedItemID: offeredItemID}
+	senderID := uuid.UUID{}
+	recipientID := uuid.UUID{}
+
+	swapRequest := &domain.SwapRequest{
+		ID:              swapRequestID,
+		OfferedItemID:   offeredItemID,
+		SenderID:        senderID,
+		RecipientID:     recipientID,
+		ReferenceNumber: "REF123",
+	}
 
 	t.Run("success", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("Delete", swapRequestID).Return(nil).Once()
 		mockItemRepo.On("Update", offeredItemID, mock.Anything).Return(&domain.Item{}, nil).Once()
+
+		mockUserRepo.On("FindByID", recipientID).Return(&domain.User{
+			ID:       recipientID,
+			Username: "recipient",
+			Email:    "recipient@example.com",
+		}, nil).Once()
+
+		mockUserRepo.On("FindByID", senderID).Return(&domain.User{
+			ID:       senderID,
+			Username: "sender",
+			Email:    "sender@example.com",
+		}, nil).Once()
+
+		mockEmailService.On("SendEmail", mock.AnythingOfType("*domain.EmailMessage")).Return(nil).Once()
 
 		err := service.Delete(swapRequestID)
 		assert.NoError(t, err)
 
 		mockItemRepo.AssertExpectations(t)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+		mockEmailService.AssertExpectations(t)
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(nil, errors.New("not found")).Once()
 
 		err := service.Delete(swapRequestID)
@@ -311,7 +446,8 @@ func TestSwapRequestService_Delete(t *testing.T) {
 	})
 
 	t.Run("delete failed", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, _, _ := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("Delete", swapRequestID).Return(errors.New("delete error")).Once()
 
@@ -323,15 +459,32 @@ func TestSwapRequestService_Delete(t *testing.T) {
 	})
 
 	t.Run("reset offered status failed", func(t *testing.T) {
-		service, mockSwapRequestRepo, mockItemRepo := setupSwapRequestServiceTest()
+		service, mockSwapRequestRepo, mockItemRepo, mockUserRepo, mockEmailService := setupSwapRequestServiceTest()
+
 		mockSwapRequestRepo.On("FindByID", swapRequestID).Return(swapRequest, nil).Once()
 		mockSwapRequestRepo.On("Delete", swapRequestID).Return(nil).Once()
 		mockItemRepo.On("Update", offeredItemID, mock.Anything).Return(nil, errors.New("update error")).Once()
+
+		mockUserRepo.On("FindByID", recipientID).Return(&domain.User{
+			ID:       recipientID,
+			Username: "recipient",
+			Email:    "recipient@example.com",
+		}, nil).Once()
+
+		mockUserRepo.On("FindByID", senderID).Return(&domain.User{
+			ID:       senderID,
+			Username: "sender",
+			Email:    "sender@example.com",
+		}, nil).Once()
+
+		mockEmailService.On("SendEmail", mock.AnythingOfType("*domain.EmailMessage")).Return(nil).Once()
 
 		err := service.Delete(swapRequestID)
 		assert.Error(t, err)
 
 		mockItemRepo.AssertExpectations(t)
 		mockSwapRequestRepo.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+		mockEmailService.AssertExpectations(t)
 	})
 }
