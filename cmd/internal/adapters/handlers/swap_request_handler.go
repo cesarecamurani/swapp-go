@@ -33,7 +33,7 @@ type SwapRequestResponse struct {
 	ReferenceNumber string `json:"reference_number"`
 	OfferedItemID   string `json:"offered_item_id"`
 	RequestedItemID string `json:"requested_item_id"`
-	SenderID        string `json:""`
+	SenderID        string `json:"sender_id"`
 	RecipientID     string `json:"recipient_id"`
 }
 
