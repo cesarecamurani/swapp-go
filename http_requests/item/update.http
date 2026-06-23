@@ -1,0 +1,15 @@
+PUT localhost:9000/items/update/:id
+Authorization: Bearer
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="name"
+
+Updated Name
+
+--WebAppBoundary
+Content-Disposition: form-data; name="description"
+
+Updated Description
+
+--WebAppBoundary--

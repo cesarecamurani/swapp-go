@@ -1,0 +1,10 @@
+PATCH localhost:9000/users/update
+Content-Type: application/json
+Authorization: Bearer
+
+{
+  "username": "",
+  "email": "",
+  "phone": "",
+  "address": "C"
+}

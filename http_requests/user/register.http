@@ -1,0 +1,10 @@
+POST localhost:9000/users/register
+Content-Type: application/json
+
+{
+  "username": "",
+  "password": "",
+  "email": "",
+  "phone": "",
+  "address": ""
+}
