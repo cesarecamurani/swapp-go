@@ -1,6 +1,6 @@
 SwApp GO!
 ---------
 
-A Go application where people can trade pre-loved items.
+A Go application where people can exchange items and services.
 
 👷‍♂️ --- WIP --- 🚧
